@@ -1,0 +1,102 @@
+@use "../../styles/variables" as *;
+
+// The filter box. Styles everything inside it, also the questions from QuestionCategoryStep,
+// so the step components don't need their own classes for the basics.
+.sidebar {
+    background: $panel;
+    border-radius: $radius;
+    padding: 18px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: $font;
+    color: $ink;
+
+    // "Steps"
+    h2 {
+        @include eyebrow;
+        margin: 0;
+        color: $muted;
+    }
+
+    // The title of each step, e.g. "Your location"
+    h3 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 400;
+        letter-spacing: -0.02em;
+    }
+
+    // The text of a question, e.g. "Property size"
+    p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    // A label with its input below it
+    label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    input {
+        @include input;
+    }
+
+    // Answer buttons: everything that can be chosen has aria-pressed
+    button[aria-pressed] {
+        @include option;
+        margin: 6px 6px 0 0;
+    }
+
+    // Small grey text under a field (written here so it wins over the "p" above)
+    .hint {
+        font-size: 13px;
+        font-weight: 400;
+        color: $muted;
+    }
+
+    // Follow-up questions sit in a light box under their main question
+    :global(.followUp) {
+        margin-top: 12px;
+        padding: 12px;
+        background: $bg;
+        border-radius: $radius;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    @include tablet-down {
+        padding: 14px 18px 18px;
+    }
+}
+
+// Previous and next
+.nav {
+    display: flex;
+    gap: 8px;
+
+    button {
+        @include btn;
+        flex: 1;
+    }
+
+    // "Next step" is the dark one
+    button:last-child {
+        @include btn-solid;
+    }
+}
+
+// One step's content
+.stepWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 14px;
+    border-top: 1px solid $line-soft;
+}

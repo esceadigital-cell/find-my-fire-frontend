@@ -1,0 +1,140 @@
+// ---------- Colours ----------
+$bg: #fbf9f7; // page background
+$panel: #edeceb; // filter box
+$ink: #141414; // text and dark buttons
+$muted: #5f5e5c; // secondary text
+$soft: #bdbab6; // small text on dark backgrounds
+$field: #ffffff; // inputs and option buttons
+$accent: #f0541e; // Escea orange
+$line: rgba(20, 20, 20, 0.15);
+$line-soft: rgba(20, 20, 20, 0.1);
+$border: rgba(20, 20, 20, 0.2); // around buttons and inputs
+$error: #b83c10;
+
+// Fuel dots
+$fuel-gas: #b6aba0;
+$fuel-wood: #77685d;
+$fuel-electric: #4e594d;
+
+// ---------- Type ----------
+$font: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+
+// ---------- Shapes and motion ----------
+$radius: 4px;
+$ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+// ---------- Breakpoints ----------
+// Phone: up to 699px. Tablet: 700–1099px. Desktop: 1100px and up.
+$phone-max: 699px;
+$tablet-min: 700px;
+$tablet-max: 1099px;
+$desktop-min: 1100px;
+
+@mixin phone {
+    @media (max-width: $phone-max) {
+        @content;
+    }
+}
+@mixin tablet-down {
+    @media (max-width: $tablet-max) {
+        @content;
+    }
+}
+@mixin tablet-up {
+    @media (min-width: $tablet-min) {
+        @content;
+    }
+}
+@mixin desktop {
+    @media (min-width: $desktop-min) {
+        @content;
+    }
+}
+
+// ---------- Shared pieces ----------
+
+// Small text in capitals
+@mixin eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+// Text button with a thin border
+@mixin btn {
+    min-height: 46px;
+    padding: 0 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: $radius;
+    border: 1px solid $line;
+    background: transparent;
+    font: inherit;
+    color: $ink;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+}
+
+// The dark version of the button above
+@mixin btn-solid {
+    background: $ink;
+    border-color: $ink;
+    color: $bg;
+
+    &:hover:not(:disabled) {
+        background: #2b2b2b;
+    }
+}
+
+// An input field
+@mixin input {
+    height: 46px;
+    width: 100%;
+    min-width: 0;
+    padding: 0 14px;
+    border: 1px solid $border;
+    border-radius: $radius;
+    background: $field;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 400;
+    color: $ink;
+
+    &:focus {
+        border-color: $ink;
+        outline: none;
+    }
+}
+
+// An option button that can be chosen (aria-pressed="true" when chosen)
+@mixin option {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid $border;
+    border-radius: $radius;
+    background: $field;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    color: $ink;
+    cursor: pointer;
+
+    &:hover {
+        border-color: $ink;
+    }
+
+    &[aria-pressed="true"] {
+        background: $ink;
+        border-color: $ink;
+        color: $bg;
+    }
+}

@@ -1,0 +1,38 @@
+.map {
+    margin: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+// Same proportions as the mockup's map
+.canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 400 / 150;
+    background: #e6e2dd;
+}
+
+.caption {
+    padding: 10px 12px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.credit {
+    color: #5f5e5c;
+    font-size: 11px;
+}
+
+// The pin: a black dot with a white ring
+.pin {
+    width: 22px;
+    height: 22px;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: #141414;
+    cursor: grab;
+}
