@@ -202,6 +202,13 @@ export default function FireFinder(props: FireFinderProps) {
                 onStepChange={onStepChange}
                 stepRequest={stepRequest}
                 todoSteps={hint ?? []}
+                fuels={[
+                    ...new Set(
+                        [...result.best, ...result.more].map(
+                            (m) => m.product.fuelType,
+                        ),
+                    ),
+                ]}
             />
 
             <Results

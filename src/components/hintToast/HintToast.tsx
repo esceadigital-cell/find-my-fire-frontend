@@ -41,7 +41,7 @@ export default function HintToast(props: HintToastProps) {
             )
                 return;
             // They went to the filter box: the hint has done its job
-            if (target.closest("aside")) {
+            if (target.closest("aside, [data-filters]")) {
                 onClose.current();
                 return;
             }

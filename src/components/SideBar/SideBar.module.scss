@@ -272,3 +272,205 @@
         background: $accent;
     }
 }
+
+// =====================================================================
+// Phones: fold away, minibar, floating
+// =====================================================================
+
+// While the minibar covers the box, only the minibar has a shadow
+@include phone {
+    .box[data-under-bar] {
+        box-shadow: none;
+    }
+}
+
+// Opened from the minibar, the box floats at the top of the screen
+@include phone {
+    .floating {
+        position: fixed;
+        top: 0;
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
+        margin: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        z-index: 26;
+        max-height: 82vh;
+        max-height: 82dvh;
+        border-radius: 0 0 $radius $radius;
+        box-shadow:
+            0 1px 0 $line,
+            0 10px 28px rgba(20, 20, 20, 0.2);
+
+        .body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+    }
+
+    // Folded into one line
+    .collapsed {
+        .head,
+        .progress,
+        .body,
+        .foot {
+            display: none;
+        }
+        .mini {
+            display: flex;
+        }
+    }
+}
+
+// A borderless icon button (the fold button)
+.ghost {
+    border: 0;
+    background: transparent;
+}
+
+// The fold button only shows on phones
+.ib.collapse {
+    display: none;
+
+    @include phone {
+        display: inline-flex;
+    }
+}
+
+// ---------- The one-line summary (phones) ----------
+
+.mini {
+    display: none;
+
+    @include phone {
+        position: relative;
+        width: 100%;
+        height: 72px;
+        padding: 0 64px 0 18px;
+        border: 0;
+        background: transparent;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+        overflow: hidden;
+
+        > svg {
+            flex: none;
+        }
+    }
+}
+
+.miniText {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.miniTitle {
+    font-size: 15px;
+    color: $ink;
+    line-height: 1.25;
+}
+
+.miniSub {
+    font-size: 12px;
+    line-height: 1.3;
+    color: $muted;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.ftags {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.ftag {
+    @include fuel-tag;
+    gap: 4px;
+    padding: 2px 5px;
+    font-size: 9.5px;
+}
+
+.fdot {
+    @include fuel-dot;
+    @include fuel-dot-colours;
+}
+
+// The round + / − in the corner
+.chevBox {
+    position: absolute;
+    top: calc(50% - 20px);
+    right: 14px;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chev {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    background: rgba(20, 20, 20, 0.09);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+}
+
+.pm {
+    width: 12px;
+    height: 12px;
+}
+
+.pv {
+    transform-origin: 12px 12px;
+    transform-box: view-box;
+}
+
+// Open: the vertical line is hidden, so the plus is a minus
+.open .pv {
+    transform: scaleY(0);
+}
+
+// ---------- Minibar (phones) ----------
+
+.minibar {
+    display: none;
+
+    @include phone {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        z-index: 25;
+        padding: env(safe-area-inset-top, 0px)
+            max(12px, env(safe-area-inset-right, 0px)) 0
+            max(12px, env(safe-area-inset-left, 0px));
+        transform: translateY(-120%);
+        transition: transform 0.65s $ease;
+        pointer-events: none;
+
+        &[data-show] {
+            transform: none;
+            pointer-events: auto;
+        }
+
+        .mini {
+            display: flex;
+            background: $panel;
+            border-radius: 0 0 $radius $radius;
+            box-shadow:
+                0 1px 0 $line,
+                0 6px 16px rgba(20, 20, 20, 0.16);
+        }
+    }
+}
