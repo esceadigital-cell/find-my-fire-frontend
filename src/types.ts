@@ -56,6 +56,8 @@ export type PropertyAnswer = {
     productProperty: string | null; // e.g. "fuelType"
     compareMethod: Operator | null;
     filterValue: string | number | null; // null = this answer doesn't filter, e.g. "No preference"
+    label: string;
+    isPreference: boolean;
 };
 
 export type PropertyAnswers = Record<string, PropertyAnswer>;
@@ -69,10 +71,29 @@ export type HeatingAnswers = Record<string, HeatingAnswer>;
 
 // ---------- Products ----------
 
+export type ProductLink = {
+    id: number;
+    url: string;
+    brand: Brand | null;
+    configuration: Configuration | null; // empty: the link is for the product as a whole
+    label: string | null;
+};
+
+export type Brand = {
+    documentId: string;
+    brandName: string;
+    url: string;
+    slug: string;
+};
+export type Configuration = { documentId: string; configurationType: string };
+export type Base = { documentId: string; baseType: string | null };
+
+export type Media = { url: string; alternativeText: string | null };
+
 export type Product = {
     documentId: string;
     name: string;
-    productUrl: string | null;
+    //productUrl: string | null;
     fuelType: "wood" | "gas" | "electric";
     installType: "freestanding" | "inbuilt" | "insert" | null;
     maxOutputKw: number | null;
@@ -84,6 +105,21 @@ export type Product = {
     height: number | null;
     depth: number | null;
     markets: { code: MarketCode }[];
+    image: Media | null;
+    brands?: Brand[];
+    manufacturer?: Brand | null; // the fire's own brand (Escea, Ambe, Maxen, MODE)
+    //configurations?: Configuration[];
+    bases?: Base[];
+    isOutdoor: boolean | null;
+    emissionFactorMgMj: number | null;
+    star_rating: number | null;
+    clean_air_approved: boolean | null;
+    zero_clearance_rated: boolean | null;
+    flue_type: "direct vent" | "powered direct vent" | "ventless" | null;
+    remote_control: boolean | null;
+    smartheat_wifi: boolean | null;
+    external_fan: "Yes" | "No" | "Optional" | null;
+    productLinks?: ProductLink[];
 };
 
 // ---------- Shared ----------

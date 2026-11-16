@@ -138,3 +138,95 @@ $desktop-min: 1100px;
         color: $bg;
     }
 }
+
+// =====================================================================
+// Added for the visual layer (same values as the mockup)
+// =====================================================================
+
+$scrim: rgba(20, 20, 20, 0.5); // behind dialogs
+$sandstone: #f1ece7; // cards in "Best for your home"
+$diff-bg: #f5f0ec; // rows that differ in the compare table
+$skeleton: #e3ded8; // loading placeholders
+$skeleton-light: #f3efea;
+
+// Side padding that also respects the notch on phones
+@mixin gutter {
+    padding-left: max(32px, env(safe-area-inset-left, 0px));
+    padding-right: max(32px, env(safe-area-inset-right, 0px));
+
+    @include tablet-down {
+        padding-left: max(24px, env(safe-area-inset-left, 0px));
+        padding-right: max(24px, env(safe-area-inset-right, 0px));
+    }
+    @include phone {
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+}
+
+// Square icon button (arrows, close)
+@mixin icon-button {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: $radius;
+    border: 1px solid $border;
+    background: $bg;
+    color: $ink;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        background: transparent;
+    }
+}
+@mixin icon-button-dark {
+    background: $ink;
+    border-color: $ink;
+    color: $bg;
+
+    &:disabled {
+        background: transparent;
+        border-color: $border;
+        color: $ink;
+    }
+}
+
+// Fuel tag with a coloured dot
+@mixin fuel-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border-radius: $radius;
+    background: $bg;
+    border: 1px solid $line;
+    color: $ink;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+@mixin fuel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 8px;
+    display: inline-block;
+    flex: none;
+}
+@mixin fuel-dot-colours {
+    &.gas {
+        background: $fuel-gas;
+    }
+    &.wood {
+        background: $fuel-wood;
+    }
+    &.electric {
+        background: $fuel-electric;
+    }
+}

@@ -1,0 +1,54 @@
+@use "../../styles/variables" as *;
+
+.nextSteps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+
+    > div {
+        border: 1px solid $line;
+        border-radius: $radius;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    h3 {
+        font-size: 20px;
+        font-weight: 400;
+    }
+
+    p {
+        font-size: 14px;
+        color: $muted;
+    }
+
+    @include tablet-down {
+        grid-template-columns: 1fr;
+    }
+}
+
+.btn {
+    @include btn;
+    margin-top: auto;
+}
+
+.solid {
+    @include btn-solid;
+}
+
+// Fades in with the fires the first time
+:global(.reveal) .nextSteps {
+    animation: revFade 1.1s 0.25s ease both;
+}
+
+@keyframes revFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

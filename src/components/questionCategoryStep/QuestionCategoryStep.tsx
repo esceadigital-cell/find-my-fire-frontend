@@ -1,3 +1,4 @@
+import styles from "./QuestionCategoryStep.module.scss";
 import {
     HeatingAnswers,
     HeatingOption,
@@ -22,6 +23,8 @@ interface QuestionCategoryStepProps {
         value: number | null,
     ) => void;
     removeAnswers: (questionIds: string[]) => void;
+    /** Added: questions the user tried to skip in a required category (shown with an orange border) */
+    missingIds?: string[];
 }
 
 // A question together with which kind it is, so both kinds can be listed together
@@ -77,10 +80,28 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
             return (
                 <label
                     key={question.documentId}
-                    className={isFollowUp ? "followUp" : undefined}
+                    className={[
+                        styles.field,
+                        isFollowUp && styles.followUp,
+                        props.missingIds?.includes(question.documentId) &&
+                            styles.need,
+                    ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    data-need={
+                        props.missingIds?.includes(question.documentId) ||
+                        undefined
+                    }
                 >
-                    {question.text}
-                    {question.unit && ` (${question.unit})`}
+                    <span className={styles.label}>
+                        {question.text}
+                        {question.unit && (
+                            <span className={styles.optTag}>
+                                {" "}
+                                ({question.unit})
+                            </span>
+                        )}
+                    </span>
                     <input
                         type="number"
                         inputMode="decimal"
@@ -116,31 +137,51 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
         return (
             <div
                 key={item.question.documentId}
-                className={isFollowUp ? "followUp" : undefined}
+                className={[
+                    styles.question,
+                    isFollowUp && styles.followUp,
+                    props.missingIds?.includes(item.question.documentId) &&
+                        styles.need,
+                ]
+                    .filter(Boolean)
+                    .join(" ")}
+                data-need={
+                    props.missingIds?.includes(item.question.documentId) ||
+                    undefined
+                }
             >
-                <p>{item.question.text}</p>
+                <span className={styles.label}>{item.question.text}</span>
 
-                {item.question.options.map((option) => (
-                    <button
-                        key={option.id}
-                        type="button"
-                        aria-pressed={chosenId === option.id}
-                        onClick={() => {
-                            hideFollowUps(item.question, option);
-                            item.kind === "heating"
-                                ? props.onHeatingAnswer(
-                                      item.question,
-                                      option as HeatingOption,
-                                  )
-                                : props.onPropertyAnswer(
-                                      item.question,
-                                      option as PropertyOption,
-                                  );
-                        }}
-                    >
-                        {option.label}
-                    </button>
-                ))}
+                {/* Five or more options are shown as a grid */}
+                <div
+                    className={
+                        item.question.options.length >= 5
+                            ? `${styles.options} ${styles.grid3}`
+                            : styles.options
+                    }
+                >
+                    {item.question.options.map((option) => (
+                        <button
+                            key={option.id}
+                            type="button"
+                            aria-pressed={chosenId === option.id}
+                            onClick={() => {
+                                hideFollowUps(item.question, option);
+                                item.kind === "heating"
+                                    ? props.onHeatingAnswer(
+                                          item.question,
+                                          option as HeatingOption,
+                                      )
+                                    : props.onPropertyAnswer(
+                                          item.question,
+                                          option as PropertyOption,
+                                      );
+                            }}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
 
                 {openFollowUps.map((f) =>
                     renderQuestion(
@@ -152,9 +193,9 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
         );
     }
 
+    // The category's name is shown in the filter box's header, so it isn't repeated here
     return (
-        <div>
-            <h3>{props.category.name}</h3>
+        <div className={styles.step}>
             {mainQuestions.map((item) => renderQuestion(item, false))}
         </div>
     );

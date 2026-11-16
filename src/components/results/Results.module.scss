@@ -1,0 +1,61 @@
+@use "../../styles/variables" as *;
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    min-width: 0;
+
+    @include phone {
+        gap: 24px;
+    }
+
+    // Tablet and desktop: the results scroll on their own
+    @include tablet-up {
+        height: 100%;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        overflow-anchor: none;
+        padding-right: 4px;
+        scrollbar-gutter: stable;
+    }
+}
+
+// Room for the compare bar
+@include tablet-up {
+    :global(body.has-cmp) .results {
+        padding-bottom: 96px;
+    }
+}
+
+// Before steps 1 and 2 are answered
+.gate {
+    border: 1px dashed $line;
+    border-radius: $radius;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    h2 {
+        font-size: 28px;
+        line-height: 1.1;
+    }
+
+    p {
+        font-size: 15px;
+        color: $muted;
+        max-width: 52ch;
+    }
+}
+
+.footer {
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1px solid $line;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+}

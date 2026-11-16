@@ -15,8 +15,8 @@ interface LocationMapProps {
     /** air sheds to draw as dashed outlines */
     zones: { name: string; geometry: Geometry }[];
     caption: string;
-    /** called with the pin's new position when the user drags it */
-    onMove: (lat: number, lng: number) => void;
+    /** called with the pin's new position when the user drags it. Leave out for a map you can't drag the pin on */
+    onMove?: (lat: number, lng: number) => void;
 }
 
 /** A map with the address as a pin you can drag, and nearby air sheds as dashed outlines. */
@@ -37,16 +37,25 @@ export default function LocationMap(props: LocationMapProps) {
         import("leaflet").then((L) => {
             if (cancelled || !container.current || map.current) return;
 
-            map.current = L.map(container.current, { zoomControl: false, attributionControl: false, scrollWheelZoom: false })
-                .setView([props.lat, props.lng], 13);
+            map.current = L.map(container.current, {
+                zoomControl: false,
+                attributionControl: false,
+                scrollWheelZoom: false,
+            }).setView([props.lat, props.lng], 13);
             L.tileLayer(TILES_URL, { maxZoom: 19 }).addTo(map.current);
             outlines.current = L.layerGroup().addTo(map.current);
 
-            const pin = L.divIcon({ className: styles.pin, iconSize: [22, 22] });
-            marker.current = L.marker([props.lat, props.lng], { icon: pin, draggable: true }).addTo(map.current);
+            const pin = L.divIcon({
+                className: styles.pin,
+                iconSize: [22, 22],
+            });
+            marker.current = L.marker([props.lat, props.lng], {
+                icon: pin,
+                draggable: !!onMove.current,
+            }).addTo(map.current);
             marker.current.on("dragend", () => {
                 const position = marker.current!.getLatLng();
-                onMove.current(position.lat, position.lng);
+                onMove.current?.(position.lat, position.lng);
             });
 
             drawZones(L);
@@ -74,7 +83,13 @@ export default function LocationMap(props: LocationMapProps) {
         outlines.current.clearLayers();
         for (const zone of props.zones) {
             L.geoJSON(zone.geometry as GeoJSON.Geometry, {
-                style: { color: "#F0541E", weight: 2, dashArray: "6 5", fillColor: "#F0541E", fillOpacity: 0.06 },
+                style: {
+                    color: "#F0541E",
+                    weight: 2,
+                    dashArray: "6 5",
+                    fillColor: "#F0541E",
+                    fillOpacity: 0.06,
+                },
             })
                 .bindTooltip(zone.name)
                 .addTo(outlines.current);
@@ -83,7 +98,12 @@ export default function LocationMap(props: LocationMapProps) {
 
     return (
         <figure className={styles.map}>
-            <div ref={container} className={styles.canvas} role="img" aria-label={props.caption} />
+            <div
+                ref={container}
+                className={styles.canvas}
+                role="img"
+                aria-label={props.caption}
+            />
             <figcaption className={styles.caption}>
                 <span>{props.caption}</span>
                 <span className={styles.credit}>{TILES_CREDIT}</span>

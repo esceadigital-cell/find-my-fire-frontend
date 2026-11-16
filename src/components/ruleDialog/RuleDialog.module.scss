@@ -1,0 +1,91 @@
+@use "../../styles/variables" as *;
+
+.dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: $scrim;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(32px + env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        calc(32px + env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+
+    // Phones: a sheet from the bottom
+    @include phone {
+        align-items: flex-end;
+        padding: 0;
+    }
+}
+
+.panel {
+    background: $bg;
+    border-radius: $radius;
+    width: min(480px, 100%);
+    padding: 24px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    @include phone {
+        border-radius: 12px 12px 0 0;
+        min-height: 0;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+.head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+
+    h2 {
+        font-size: 26px;
+        line-height: 1.1;
+    }
+}
+
+.eyebrow {
+    @include eyebrow;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.address {
+    font-size: 14px;
+    color: $muted;
+    margin-top: 6px;
+}
+
+.ib {
+    @include icon-button;
+}
+
+.description {
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 60ch;
+}
+
+.source {
+    font-size: 12px;
+    color: $muted;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.solid {
+    @include btn;
+    @include btn-solid;
+}

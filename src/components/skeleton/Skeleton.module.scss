@@ -1,0 +1,121 @@
+@use "../../styles/variables" as *;
+
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+    animation: skGrow 0.9s $ease both;
+}
+
+@keyframes skGrow {
+    from {
+        max-height: 150px;
+        filter: blur(8px);
+        opacity: 0.35;
+    }
+    to {
+        max-height: 1000px;
+        filter: blur(0);
+        opacity: 1;
+    }
+}
+
+// Every placeholder shimmers from right to left
+.bone {
+    display: block;
+    border-radius: $radius;
+    background: linear-gradient(
+        90deg,
+        $skeleton 0%,
+        $skeleton-light 40%,
+        $skeleton 80%
+    );
+    background-size: 250% 100%;
+    animation: skShimmer 1.2s linear infinite;
+}
+
+@keyframes skShimmer {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -150% 0;
+    }
+}
+
+.head {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid $line;
+}
+
+.title {
+    height: 36px;
+    width: min(360px, 60%);
+}
+
+.subtitle {
+    height: 14px;
+    width: min(220px, 40%);
+}
+
+// As many placeholders as cards fit in a row on this screen (Skeleton sets --per)
+.cards {
+    display: grid;
+    grid-template-columns: repeat(var(--per, 3), minmax(0, 1fr));
+    gap: 16px;
+}
+
+.card {
+    background: $sandstone;
+    border-radius: $radius;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 18px;
+
+    &:nth-child(2) .bone {
+        animation-delay: 0.15s;
+    }
+    &:nth-child(3) .bone {
+        animation-delay: 0.3s;
+    }
+}
+
+// Same shape as a card's picture
+.image {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+    border-radius: 0;
+
+    @include tablet-down {
+        aspect-ratio: 4 / 3;
+    }
+    @include phone {
+        aspect-ratio: 16 / 10;
+    }
+    @include desktop {
+        max-height: max(140px, calc(100vh - 600px));
+    }
+}
+
+.name {
+    height: 20px;
+    width: 45%;
+    margin: 6px 16px 0;
+}
+
+.line {
+    height: 12px;
+    width: 75%;
+    margin: 0 16px;
+}
+
+.short {
+    width: 50%;
+}

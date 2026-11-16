@@ -1,0 +1,328 @@
+@use "../../styles/variables" as *;
+
+// ---------- The dialog ----------
+
+.dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: $scrim;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: calc(32px + env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        calc(32px + env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+
+    @include phone {
+        padding: env(safe-area-inset-top, 0px) 0 0;
+    }
+}
+
+.panel {
+    background: $bg;
+    border-radius: $radius;
+    width: min(1100px, 100%);
+    display: flex;
+    flex-direction: column;
+
+    @include phone {
+        border-radius: 0;
+        min-height: 100%;
+    }
+}
+
+.panelHead {
+    padding: 24px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    border-bottom: 1px solid $line;
+
+    h2 {
+        font-size: 32px;
+
+        @include phone {
+            font-size: 26px;
+        }
+    }
+
+    p {
+        font-size: 14px;
+        color: $muted;
+        margin-top: 6px;
+    }
+
+    @include phone {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+.ib {
+    @include icon-button;
+}
+
+.tools {
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 14px;
+
+    @include phone {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+.mobileDiff {
+    padding-top: 10px;
+    padding-bottom: 4px;
+
+    .check {
+        min-height: 36px;
+    }
+}
+
+// "Only show differences": a square tick box
+.check {
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+
+    &[aria-pressed="true"] .box {
+        background: $ink;
+    }
+}
+
+.box {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid $ink;
+    background: $field;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.boxTick {
+    color: $bg;
+    display: inline-flex;
+}
+
+.sr {
+    position: absolute;
+    left: -9999px;
+}
+
+// ---------- Table (tablet and desktop) ----------
+
+.tableWrap {
+    overflow-x: auto;
+    padding: 0 28px 28px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 640px;
+    font-size: 14px;
+    table-layout: fixed;
+
+    th,
+    td {
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        hyphens: auto;
+        text-align: left;
+        vertical-align: top;
+        padding: 14px 16px;
+        border-bottom: 1px solid $line-soft;
+    }
+
+    thead th {
+        border-bottom: 1px solid $line;
+    }
+
+    th[scope="row"] {
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        width: 180px;
+        position: sticky;
+        left: 0;
+        background: $bg;
+        z-index: 1;
+    }
+
+    thead th.corner {
+        vertical-align: bottom;
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 400;
+        font-size: 14px;
+
+        .check {
+            min-height: 32px;
+            line-height: 1.25;
+        }
+    }
+}
+
+.rowHeadCol {
+    width: 190px;
+}
+
+// Rows where the fires differ are tinted and marked
+.diff td {
+    background: $diff-bg;
+}
+
+.diff th[scope="row"]::after {
+    content: "Differs";
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 10px;
+    color: $muted;
+    letter-spacing: 0.05em;
+}
+
+.cell {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+
+    svg {
+        flex: none;
+        margin-top: 2px;
+    }
+}
+
+.ok {
+    color: $ink;
+    display: inline-flex;
+}
+
+.bad {
+    color: $accent;
+    display: inline-flex;
+}
+
+.thumb {
+    aspect-ratio: 4 / 3;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    max-width: 100%;
+}
+
+.colName {
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+}
+
+.colType {
+    font-size: 13px;
+    color: $muted;
+    font-weight: 400;
+}
+
+.remove {
+    border: 0;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    text-decoration: underline;
+    margin-top: 6px;
+    min-height: 24px;
+}
+
+// ---------- Stacked specs (phones) ----------
+
+.cm {
+    padding: 4px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cmFires,
+.cmValues {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+}
+
+.cmFires {
+    padding: 0 0 6px;
+
+    > div {
+        padding: 0 6px 0 0;
+        min-width: 0;
+    }
+
+    .thumb {
+        margin-bottom: 8px;
+    }
+
+    .colName {
+        font-size: 17px;
+    }
+}
+
+.cmSpec {
+    border: 1px solid $line;
+    border-radius: $radius;
+    overflow: hidden;
+    background: $bg;
+
+    &.diff .cmValues {
+        background: $diff-bg;
+    }
+}
+
+.cmLabel {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 12px;
+    background: $panel;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+
+    span {
+        font-size: 10px;
+        font-weight: 400;
+        color: $muted;
+        letter-spacing: 0.05em;
+    }
+}
+
+.cmValues > div {
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.35;
+    min-width: 0;
+}
+
+.cmValues > div + div {
+    border-left: 1px solid $line-soft;
+}

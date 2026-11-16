@@ -1,17 +1,15 @@
-import FireFinder from "@/components/fireFinder/FireFinder";
-import styles from "./page.module.scss";
+import FireFinderPage from "@/components/fireFinderPage/FireFinderPage";
 import { getProducts, getQuestionCategories } from "@/lib/api";
 
+// The main page: every brand's fires
 export default async function Home() {
-  const allProducts = await getProducts();
-  const questionCategories = await getQuestionCategories();
+    const allProducts = await getProducts();
+    const questionCategories = await getQuestionCategories();
 
-  return (
-    <div className={styles.page}>
-      <FireFinder
-        products={allProducts}
-        questionCategories={questionCategories}
-      />
-    </div>
-  );
+    return (
+        <FireFinderPage
+            products={allProducts}
+            questionCategories={questionCategories}
+        />
+    );
 }

@@ -1,0 +1,103 @@
+@use "variables" as *;
+
+// Safe areas on phones with a notch
+:root {
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+    -webkit-tap-highlight-color: transparent;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: $bg;
+    color: $ink;
+    font-family: $font;
+    font-size: 15px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+}
+
+// Room for the compare bar (phones; on bigger screens the results get the padding)
+body.has-cmp {
+    padding-bottom: 96px;
+}
+
+img {
+    max-width: 100%;
+}
+
+a {
+    color: $ink;
+}
+a:hover {
+    color: $muted;
+}
+
+button,
+input,
+select {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+// Focus rings only when using the keyboard (FireFinder adds .kb to <html> when Tab is pressed)
+:focus-visible {
+    outline: none;
+}
+html.kb :focus-visible {
+    outline: 2px solid $accent;
+    outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+    margin: 0;
+}
+
+h1,
+h2 {
+    text-wrap: balance;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+}
+
+// Tablet and desktop: the page fills the window, the filter box stays put and the results scroll
+@include tablet-up {
+    html,
+    body {
+        height: 100%;
+    }
+    body {
+        overflow: hidden;
+    }
+    body.has-cmp {
+        padding-bottom: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

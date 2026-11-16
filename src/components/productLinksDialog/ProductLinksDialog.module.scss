@@ -1,0 +1,124 @@
+@use "../../styles/variables" as *;
+
+// The same frame as the compare dialog
+.dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: $scrim;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: calc(32px + env(safe-area-inset-top, 0px))
+        max(32px, env(safe-area-inset-right, 0px))
+        calc(32px + env(safe-area-inset-bottom, 0px))
+        max(32px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+
+    @include tablet-down {
+        padding: calc(16px + env(safe-area-inset-top, 0px))
+            max(16px, env(safe-area-inset-right, 0px))
+            calc(16px + env(safe-area-inset-bottom, 0px))
+            max(16px, env(safe-area-inset-left, 0px));
+    }
+    @include phone {
+        padding: env(safe-area-inset-top, 0px) 0 0;
+    }
+}
+
+.panel {
+    background: $bg;
+    border-radius: $radius;
+    width: min(520px, 100%);
+    margin: auto 0;
+    overflow: hidden;
+
+    @include phone {
+        margin: 0;
+        min-height: 100%;
+        border-radius: 0;
+    }
+}
+
+// The fire's name at the top, like "Compare 2 fires"
+.head {
+    padding: 24px 24px 18px;
+    border-bottom: 1px solid $line;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+
+    h2 {
+        font-size: 30px;
+        line-height: 1.05;
+
+        @include phone {
+            font-size: 24px;
+        }
+    }
+
+    p {
+        font-size: 14px;
+        color: $muted;
+        margin-top: 6px;
+    }
+
+    @include phone {
+        padding: 16px;
+    }
+}
+
+.ib {
+    @include icon-button;
+}
+
+.body {
+    padding: 20px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    @include phone {
+        padding: 16px;
+    }
+}
+
+// Large picture, 4:3 like the compare dialog
+.picture {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 2px;
+}
+
+.lede {
+    font-size: 14px;
+    color: $muted;
+}
+
+.options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+// One version: looks like an option button, with an arrow out
+.option {
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid $border;
+    border-radius: $radius;
+    background: $field;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 15px;
+    color: $ink;
+    text-decoration: none;
+
+    &:hover {
+        border-color: $ink;
+        color: $ink;
+    }
+}

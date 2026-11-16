@@ -1,4 +1,32 @@
+@use "../../styles/variables" as *;
+
+// Filter box | results. Tablet: 320px | the rest. Desktop: 400px | the rest. Phones: stacked.
 .wrapper {
-  display: flex;
-  gap: 50px;
+    @include gutter;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 32px;
+    align-items: start;
+    padding-bottom: 96px;
+
+    @include tablet-down {
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 20px;
+        padding-bottom: 64px;
+    }
+    @include phone {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    // Fill the rest of the window, so the filter box and the results each get the full height
+    @include tablet-up {
+        flex: 1;
+        min-height: 0;
+        padding-bottom: 24px;
+        align-items: stretch;
+    }
+    @include desktop {
+        grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    }
 }

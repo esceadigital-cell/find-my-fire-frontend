@@ -1,0 +1,149 @@
+@use "../../styles/variables" as *;
+
+// Tablet and desktop: the page fills the window. The filter box stays put and only the results scroll.
+.page {
+    @include tablet-up {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+.main {
+    @include tablet-up {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+}
+
+// ---------- Intro ----------
+
+.intro {
+    @include gutter;
+    padding-top: 32px;
+    padding-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+
+    > div {
+        max-width: 760px;
+    }
+
+    @include tablet-down {
+        padding-top: 20px;
+        padding-bottom: 16px;
+        gap: 8px;
+    }
+    @include phone {
+        padding-top: 16px;
+        padding-bottom: 12px;
+    }
+    @include tablet-up {
+        transition: all 0.35s ease;
+    }
+}
+
+.kicker {
+    @include eyebrow;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 6px;
+    background: $accent;
+    display: inline-block;
+}
+
+.title {
+    font-size: 44px;
+    line-height: 1;
+
+    @include tablet-down {
+        font-size: 32px;
+    }
+    @include phone {
+        font-size: 28px;
+    }
+    @include tablet-up {
+        transition: all 0.35s ease;
+    }
+}
+
+.lede {
+    font-size: 17px;
+    color: $muted;
+    max-width: 620px;
+
+    @include tablet-down {
+        font-size: 15px;
+    }
+    @include phone {
+        display: none;
+    }
+}
+
+// ---------- When the fires first show (tablet and desktop) ----------
+// The intro shrinks and moves over the filter column, so the results get the full height.
+
+@include tablet-up {
+    :global(body.compact) .intro {
+        padding-top: 14px;
+        padding-bottom: 14px;
+        align-items: flex-start;
+        gap: 4px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 6;
+        width: calc(max(24px, env(safe-area-inset-left, 0px)) + 320px);
+        padding-right: 0;
+
+        > div {
+            flex: none;
+        }
+    }
+
+    :global(body.compact) .title {
+        font-size: 22px;
+        white-space: nowrap;
+    }
+
+    :global(body.compact) .kicker {
+        display: none;
+    }
+
+    :global(body.compact) .lede {
+        font-size: 14px;
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        animation: ledeUp 1.3s 0.3s $ease both;
+    }
+}
+
+@include desktop {
+    :global(body.compact) .intro {
+        width: calc(max(32px, env(safe-area-inset-left, 0px)) + 400px);
+    }
+}
+
+@keyframes ledeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

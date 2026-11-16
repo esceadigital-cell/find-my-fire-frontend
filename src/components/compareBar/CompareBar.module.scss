@@ -1,0 +1,102 @@
+@use "../../styles/variables" as *;
+
+.bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    background: $ink;
+    color: $bg;
+    padding: 14px max(32px, env(safe-area-inset-right, 0px))
+        calc(14px + env(safe-area-inset-bottom, 0px))
+        max(32px, env(safe-area-inset-left, 0px));
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    @include phone {
+        padding-top: 10px;
+        gap: 10px;
+    }
+}
+
+.label {
+    font-size: 14px;
+
+    @include phone {
+        display: none;
+    }
+}
+
+.count {
+    display: none;
+    font-size: 14px;
+    flex: 1;
+
+    @include phone {
+        display: block;
+    }
+}
+
+.chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+
+    @include phone {
+        display: none;
+    }
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px 0 12px;
+    min-height: 36px;
+    border: 1px solid rgba(251, 249, 247, 0.25);
+    border-radius: $radius;
+    font-size: 14px;
+
+    button {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        background: transparent;
+        color: $bg;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.clear {
+    border: 0;
+    background: none;
+    color: $bg;
+    text-decoration: underline;
+    min-height: 44px;
+    padding: 0 4px;
+    font-size: 14px;
+}
+
+.go {
+    @include btn;
+    background: $bg;
+    color: $ink;
+    border-color: $bg;
+
+    &[disabled] {
+        opacity: 0.4;
+    }
+}
+
+.message {
+    font-size: 13px;
+    color: $soft;
+    width: 100%;
+}
