@@ -3,6 +3,7 @@
 import styles from "./SideBar.module.scss";
 import {
     HeatingAnswers,
+    HeatingQuestion,
     LocationData,
     PropertyAnswers,
     QuestionCategory,
@@ -26,7 +27,7 @@ interface SideBarProps {
     heatingAnswers: HeatingAnswers;
     propertyAnswers: PropertyAnswers;
     setPropertyOver2Hectares: (value: boolean) => void;
-    setReplacingExistingWoodBurner: (value: boolean) => void;
+    setReplacingExistingWoodBurner: (value: boolean | null) => void;
     propertyOver2Hectares: boolean | null;
     replacingExistingWoodBurner: boolean | null;
     removeAnswers: (questionIds: string[]) => void;
@@ -45,6 +46,11 @@ interface SideBarProps {
     todoSteps: number[];
     /** the fuels still possible, shown in the one-line summary on phones */
     fuels: ("gas" | "wood" | "electric")[];
+    /** 0–100 %. At 0 the fire is only for looks, and the room size and heat questions are hidden */
+    heatShare: number;
+    setHeatShare: (share: number) => void;
+    /** the heating questions asked in step 2, when the fire is to heat the room */
+    heatDemandQuestions: HeatingQuestion[];
 }
 
 export default function SideBar(props: SideBarProps) {
@@ -55,11 +61,17 @@ export default function SideBar(props: SideBarProps) {
     const [postcode, setPostcode] = useState<string>("");
     const [street, setStreet] = useState<string>("");
     const [lastStreet, setLastStreet] = useState<string>("");
-    const [width, setWidth] = useState<number | null>(null);
-    const [depth, setDepth] = useState<number | null>(null);
-    const [openArea, setOpenArea] = useState<number | null>(null);
     // Added: show "Choose a country first" above the country buttons, instead of an alert
     const [askedForCountry, setAskedForCountry] = useState(false);
+    // The lookup's message, e.g. "We couldn't find that address in New Zealand"
+    const [lookupError, setLookupError] = useState<string | null>(null);
+    // "Replacing an existing fireplace?" and, if yes, "What's your current fire?"
+    const [replacingFireplace, setReplacingFireplace] = useState<
+        boolean | null
+    >(null);
+    const [currentFire, setCurrentFire] = useState<
+        "wood" | "gas" | "electric" | null
+    >(null);
 
     async function lookUp(
         country: string,
@@ -68,7 +80,11 @@ export default function SideBar(props: SideBarProps) {
         pin?: { lat: number; lng: number },
     ) {
         setLastStreet(street);
-        const params = new URLSearchParams({ country, postcode, street });
+        const params = new URLSearchParams({
+            country,
+            postcode,
+            address: street,
+        });
         if (pin) {
             params.set("lat", String(pin.lat));
             params.set("lng", String(pin.lng));
@@ -76,16 +92,21 @@ export default function SideBar(props: SideBarProps) {
         const res = await fetch(`/api/location?${params}`);
         const data = await res.json();
         if (!res.ok) {
-            console.error(data);
+            setLookupError(data.error ?? "Something went wrong. Try again.");
             return; // don't save an error as location data
         }
+        setLookupError(null);
+        setPostcode(data.postcode); // filled in from the address
         props.updateLocationData(data);
     }
 
     function handleStreetDone() {
-        if (postcode.length !== 4 || !country) return; // the postcode has to be there first
-        if (street.trim() === lastStreet) return; // nothing new to look up
-        lookUp(country, postcode, street.trim());
+        if (!street.trim() || street.trim() === lastStreet) return; // nothing (new) to look up
+        if (!country) {
+            setAskedForCountry(true);
+            return;
+        }
+        lookUp(country, "", street.trim()); // the postcode comes from the address
     }
 
     async function handlePostcodeChange(
@@ -93,19 +114,42 @@ export default function SideBar(props: SideBarProps) {
     ) {
         const input = e.target.value.replace(/\D/g, "").slice(0, 4); // only digits, max 4
         setPostcode(input);
+        setLookupError(null);
+
+        // A postcode typed by hand replaces the address: it no longer matches
+        if (street) {
+            setStreet("");
+            setLastStreet("");
+        }
 
         if (input.length === 4) {
             if (!country) {
                 setAskedForCountry(true); // was: alert("Choose country")
                 return;
             }
-            await lookUp(country, input, street);
+            await lookUp(country, input, ""); // the postcode's centre
         }
     }
 
     function handleCountryChange(country: "AU" | "NZ") {
         setCountry(country);
-        if (postcode.length === 4) lookUp(country, postcode, street);
+        setLastStreet(""); // so the address is looked up again in the new country
+        if (street.trim()) lookUp(country, "", street.trim());
+        else if (postcode.length === 4) lookUp(country, postcode, "");
+    }
+
+    // Replacing a fireplace? No: not replacing a wood burner. Yes: it depends on the current fire,
+    // so it's unknown (null) until that's answered.
+    function handleReplacingFireplace(value: boolean) {
+        setReplacingFireplace(value);
+        setCurrentFire(null);
+        props.setReplacingExistingWoodBurner(value ? null : false);
+    }
+
+    // Replacing a wood burner only if the current fire is a wood fire
+    function handleCurrentFire(fire: "wood" | "gas" | "electric") {
+        setCurrentFire(fire);
+        props.setReplacingExistingWoodBurner(fire === "wood");
     }
 
     function locationMessage(location: LocationData) {
@@ -121,21 +165,6 @@ export default function SideBar(props: SideBarProps) {
         return `${location.region} rules apply.`;
     }
 
-    function updateRoom(
-        w: number | null,
-        d: number | null,
-        extra: number | null,
-    ) {
-        setWidth(w);
-        setDepth(d);
-        setOpenArea(extra);
-
-        if (w && d) {
-            props.setM2ToHeat(w * d + (extra ?? 0));
-        } else {
-            props.setM2ToHeat(null);
-        }
-    }
     function toNumber(value: string) {
         return value === "" ? null : Number(value);
     }
@@ -162,6 +191,8 @@ export default function SideBar(props: SideBarProps) {
         heatingAnswers: props.heatingAnswers,
         propertyAnswers: props.propertyAnswers,
         questionCategories: props.questionCategories,
+        heatShare: props.heatShare,
+        heatDemandQuestions: props.heatDemandQuestions,
     };
     const missing = (step: number) => {
         if (!isRequiredStep(step, progress)) return [];
@@ -461,7 +492,10 @@ export default function SideBar(props: SideBarProps) {
     });
 
     // The one-line summary: in the folded box, and in the minibar
-    const area = props.m2ToHeat ? Math.round(props.m2ToHeat * 10) / 10 : null;
+    const area =
+        props.heatShare > 0 && props.m2ToHeat
+            ? Math.round(props.m2ToHeat * 10) / 10
+            : null;
     const miniContent = (
         <>
             <Icon name="sliders" />
@@ -508,8 +542,8 @@ export default function SideBar(props: SideBarProps) {
         .join(" ");
 
     const REQUIRED_MESSAGES: Record<number, string> = {
-        1: "Choose your country, add your postcode and answer both questions to continue.",
-        2: "Add the room’s width and depth to continue.",
+        1: "Choose your country, add your postcode and answer the questions to continue.",
+        2: "Add the room’s size and answer every question to continue.",
     };
 
     // ---------- Text ----------
@@ -681,35 +715,11 @@ export default function SideBar(props: SideBarProps) {
                                 </div>
                             </div>
 
-                            <label
-                                className={
-                                    needs("postcode")
-                                        ? `${styles.field} ${styles.need}`
-                                        : styles.field
-                                }
-                                data-need={needs("postcode") || undefined}
-                            >
-                                <span className={styles.label}>
-                                    Postcode{" "}
-                                    <span className={styles.optTag}>
-                                        (enough for your climate zone)
-                                    </span>
-                                </span>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    autoComplete="postal-code"
-                                    value={postcode}
-                                    onChange={handlePostcodeChange}
-                                />
-                            </label>
-                            <p className={styles.hint}>{postcodeHint}</p>
-
                             <label className={styles.field}>
                                 <span className={styles.label}>
                                     Address{" "}
                                     <span className={styles.optTag}>
-                                        (street, to check local rules)
+                                        (street and town)
                                     </span>
                                 </span>
                                 {/* Until the address is found, say so here, where it can be fixed */}
@@ -720,8 +730,8 @@ export default function SideBar(props: SideBarProps) {
                                 )}
                                 <input
                                     type="text"
-                                    autoComplete="address-line1"
-                                    placeholder="12 Example Street"
+                                    autoComplete="street-address"
+                                    placeholder="12 Riccarton Road, Christchurch"
                                     value={street}
                                     onChange={(e) => setStreet(e.target.value)}
                                     onBlur={handleStreetDone}
@@ -733,6 +743,41 @@ export default function SideBar(props: SideBarProps) {
                                     }}
                                 />
                             </label>
+                            {props.location?.address && (
+                                <p className={styles.hint}>
+                                    Found: {props.location.address}
+                                </p>
+                            )}
+                            {lookupError && (
+                                <p className={styles.warn} role="alert">
+                                    {lookupError}
+                                </p>
+                            )}
+
+                            <label
+                                className={
+                                    needs("postcode")
+                                        ? `${styles.field} ${styles.need}`
+                                        : styles.field
+                                }
+                                data-need={needs("postcode") || undefined}
+                            >
+                                <span className={styles.label}>
+                                    Postcode{" "}
+                                    <span className={styles.optTag}>
+                                        (filled in from your address, or type
+                                        it)
+                                    </span>
+                                </span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="postal-code"
+                                    value={postcode}
+                                    onChange={handlePostcodeChange}
+                                />
+                            </label>
+                            <p className={styles.hint}>{postcodeHint}</p>
 
                             {props.location && country && (
                                 <LocationMap
@@ -791,26 +836,28 @@ export default function SideBar(props: SideBarProps) {
 
                             <div
                                 className={
-                                    needs("replacing")
+                                    needs("replacing") &&
+                                    replacingFireplace !== true
                                         ? `${styles.question} ${styles.need}`
                                         : styles.question
                                 }
-                                data-need={needs("replacing") || undefined}
+                                data-need={
+                                    (needs("replacing") &&
+                                        replacingFireplace !== true) ||
+                                    undefined
+                                }
                             >
                                 <span className={styles.label}>
-                                    Replacing an existing wood burner?
+                                    Replacing an existing fireplace?
                                 </span>
                                 <div className={styles.options}>
                                     <button
                                         type="button"
                                         aria-pressed={
-                                            props.replacingExistingWoodBurner ===
-                                            true
+                                            replacingFireplace === true
                                         }
                                         onClick={() =>
-                                            props.setReplacingExistingWoodBurner(
-                                                true,
-                                            )
+                                            handleReplacingFireplace(true)
                                         }
                                     >
                                         Yes
@@ -818,126 +865,156 @@ export default function SideBar(props: SideBarProps) {
                                     <button
                                         type="button"
                                         aria-pressed={
-                                            props.replacingExistingWoodBurner ===
-                                            false
+                                            replacingFireplace === false
                                         }
                                         onClick={() =>
-                                            props.setReplacingExistingWoodBurner(
-                                                false,
-                                            )
+                                            handleReplacingFireplace(false)
                                         }
                                     >
                                         No
                                     </button>
                                 </div>
+
+                                {/* Follow-up: only when replacing a fireplace */}
+                                {replacingFireplace === true && (
+                                    <div
+                                        className={
+                                            needs("replacing")
+                                                ? `${styles.question} ${styles.followUp} ${styles.need}`
+                                                : `${styles.question} ${styles.followUp}`
+                                        }
+                                        data-need={
+                                            needs("replacing") || undefined
+                                        }
+                                    >
+                                        <span className={styles.label}>
+                                            What kind of fireplace are you
+                                            replacing?
+                                        </span>
+                                        <div className={styles.options}>
+                                            {(
+                                                [
+                                                    "wood",
+                                                    "gas",
+                                                    "electric",
+                                                ] as const
+                                            ).map((fire) => (
+                                                <button
+                                                    key={fire}
+                                                    type="button"
+                                                    aria-pressed={
+                                                        currentFire === fire
+                                                    }
+                                                    onClick={() =>
+                                                        handleCurrentFire(fire)
+                                                    }
+                                                >
+                                                    {FUEL_NAMES[fire]}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/** Step 2 */}
+                    {/** Step 2: how much the fire is to heat, the room size, and the heat questions */}
                     {stepIndex === 2 && (
                         <div className={styles.stepBody}>
-                            <div className={styles.row}>
-                                <label
-                                    className={
-                                        needs("room") && width == null
-                                            ? `${styles.field} ${styles.need}`
-                                            : styles.field
-                                    }
-                                    data-need={
-                                        (needs("room") && width == null) ||
-                                        undefined
-                                    }
-                                >
-                                    <span className={styles.label}>
-                                        Width (m)
-                                    </span>
-                                    <input
-                                        type="number"
-                                        inputMode="decimal"
-                                        min={0}
-                                        step={0.1}
-                                        value={width ?? ""}
-                                        onChange={(e) =>
-                                            updateRoom(
-                                                toNumber(e.target.value),
-                                                depth,
-                                                openArea,
-                                            )
-                                        }
-                                    />
-                                </label>
-
-                                <label
-                                    className={
-                                        needs("room") && depth == null
-                                            ? `${styles.field} ${styles.need}`
-                                            : styles.field
-                                    }
-                                    data-need={
-                                        (needs("room") && depth == null) ||
-                                        undefined
-                                    }
-                                >
-                                    <span className={styles.label}>
-                                        Depth (m)
-                                    </span>
-                                    <input
-                                        type="number"
-                                        inputMode="decimal"
-                                        min={0}
-                                        step={0.1}
-                                        value={depth ?? ""}
-                                        onChange={(e) =>
-                                            updateRoom(
-                                                width,
-                                                toNumber(e.target.value),
-                                                openArea,
-                                            )
-                                        }
-                                    />
-                                </label>
-                            </div>
-
                             <label className={styles.field}>
                                 <span className={styles.label}>
-                                    Adjoining open area (m²){" "}
-                                    <span className={styles.optTag}>
-                                        (optional)
-                                    </span>
+                                    How much of the room should the fire heat?
+                                </span>
+                                <span className={styles.shareValue}>
+                                    {props.heatShare === 100
+                                        ? "All of it · the fire is the main heat source"
+                                        : props.heatShare === 0
+                                          ? "None · the fire is just for looks"
+                                          : `${props.heatShare} % · there’s other heating as well`}
                                 </span>
                                 <input
-                                    type="number"
-                                    inputMode="decimal"
+                                    type="range"
+                                    className={styles.slider}
                                     min={0}
-                                    value={openArea ?? ""}
+                                    max={100}
+                                    step={10}
+                                    value={props.heatShare}
+                                    aria-valuetext={`${props.heatShare} %`}
                                     onChange={(e) =>
-                                        updateRoom(
-                                            width,
-                                            depth,
-                                            toNumber(e.target.value),
+                                        props.setHeatShare(
+                                            Number(e.target.value),
                                         )
                                     }
                                 />
+                                <span
+                                    className={styles.sliderEnds}
+                                    aria-hidden="true"
+                                >
+                                    <span>For looks</span>
+                                    <span>All the heat</span>
+                                </span>
                             </label>
 
-                            <p className={styles.hint}>
-                                {props.m2ToHeat ? (
-                                    <>
-                                        Total space to heat:{" "}
-                                        <b>
-                                            {Math.round(props.m2ToHeat * 10) /
-                                                10}{" "}
-                                            m²
-                                        </b>
-                                        .
-                                    </>
-                                ) : (
-                                    "Add the room’s width and depth."
-                                )}{" "}
-                                The open area is space that stays open to the
-                                room, like an open-plan kitchen.
-                            </p>
+                            {/* Only when the fire is to heat the room */}
+                            {props.heatShare > 0 && (
+                                <>
+                                    <label
+                                        className={
+                                            needs("room")
+                                                ? `${styles.field} ${styles.need}`
+                                                : styles.field
+                                        }
+                                        data-need={needs("room") || undefined}
+                                    >
+                                        <span className={styles.label}>
+                                            Room size (m²)
+                                        </span>
+                                        <input
+                                            type="number"
+                                            inputMode="decimal"
+                                            min={0}
+                                            step="any"
+                                            value={props.m2ToHeat ?? ""}
+                                            onChange={(e) =>
+                                                props.setM2ToHeat(
+                                                    toNumber(e.target.value),
+                                                )
+                                            }
+                                        />
+                                    </label>
+                                    <p className={styles.hint}>
+                                        Add hallways or rooms that stay open to
+                                        this space.
+                                    </p>
+
+                                    <QuestionCategoryStep
+                                        category={{
+                                            documentId: "heat-demand",
+                                            name: "",
+                                            order: 0,
+                                            isPreferenceCategory: false,
+                                            heatingQuestions:
+                                                props.heatDemandQuestions,
+                                            propertyQuestions: [],
+                                        }}
+                                        propertyAnswers={props.propertyAnswers}
+                                        heatingAnswers={props.heatingAnswers}
+                                        onHeatingAnswer={(question, option) =>
+                                            props.updateHeatingAnswers({
+                                                [question.documentId]: {
+                                                    optionId: option.id,
+                                                    modifier: option.modifier,
+                                                },
+                                            })
+                                        }
+                                        onPropertyAnswer={() => {}} // step 2 only has heating questions
+                                        onPropertyNumber={() => {}}
+                                        removeAnswers={props.removeAnswers}
+                                        missingIds={nudgeMissing}
+                                    />
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -958,39 +1035,49 @@ export default function SideBar(props: SideBarProps) {
                                         },
                                     })
                                 }
-                                onPropertyAnswer={(question, option) =>
+                                onPropertyAnswer={(question, options) =>
                                     props.updatePropertyAnswers({
                                         [question.documentId]: {
-                                            optionId: option.id,
                                             productProperty:
                                                 question.productField,
-                                            compareMethod:
-                                                option.filterOperator,
-                                            filterValue: option.filterValue,
-                                            label: option.label,
                                             isPreference:
                                                 props.questionCategories[
                                                     stepIndex - 3
                                                 ].isPreferenceCategory ?? false,
+                                            // One entry per chosen option
+                                            chosen: options.map((option) => ({
+                                                optionId: option.id,
+                                                compareMethod:
+                                                    option.filterOperator,
+                                                filterValue: option.filterValue,
+                                                label: option.label,
+                                            })),
                                         },
                                     })
                                 }
                                 onPropertyNumber={(question, value) =>
                                     props.updatePropertyAnswers({
                                         [question.documentId]: {
-                                            optionId: null, // no button was chosen
                                             productProperty:
                                                 question.productField,
-                                            compareMethod: question.operator, // the operator is on the question, not an option
-                                            filterValue: value, // the typed number, or null if the field is empty
-                                            label:
-                                                value != null
-                                                    ? `${value}${question.unit ? " " + question.unit : ""}`
-                                                    : "",
                                             isPreference:
                                                 props.questionCategories[
                                                     stepIndex - 3
                                                 ].isPreferenceCategory ?? false,
+                                            // The typed number as the one chosen value, or nothing if the field is empty
+                                            chosen:
+                                                value != null
+                                                    ? [
+                                                          {
+                                                              optionId: null, // no button was chosen
+                                                              compareMethod:
+                                                                  question.operator, // the operator is on the question, not an option
+                                                              filterValue:
+                                                                  value,
+                                                              label: `${value}${question.unit ? " " + question.unit : ""}`,
+                                                          },
+                                                      ]
+                                                    : [],
                                         },
                                     })
                                 }

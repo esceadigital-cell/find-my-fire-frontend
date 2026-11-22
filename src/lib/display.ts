@@ -24,9 +24,9 @@ export function toneFor(product: Product) {
     return tones[hash % tones.length];
 }
 
-/** Millimetres as metres with one decimal, e.g. 1695 → "1.7 m" */
-export function metres(mm: number | null) {
-    return mm == null ? "–" : `${Math.round(mm / 100) / 10} m`;
+/** A size in metres, as it is in Strapi, e.g. 1.695 → "1.695 m" */
+export function metres(m: number | null) {
+    return m == null ? "–" : `${m} m`;
 }
 
 /** Cards per row: 3 on desktop (4 from 1440px, 5 from 1920px), 2 on tablet, 1 on phones */

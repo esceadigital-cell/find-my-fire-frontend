@@ -22,6 +22,7 @@ export type LocationData = {
     lat: number;
     lng: number;
     precise: boolean;
+    address: string | null;
     region: string | null;
     airShed: string | null;
     climateZone: ClimateZone | null;
@@ -51,13 +52,19 @@ export type Postcode = {
 
 export type MarketCode = "NZ" | "AU";
 
-export type PropertyAnswer = {
+/** One chosen option of a property answer */
+export type ChosenOption = {
     optionId: number | null; // the chosen button (null for a number question)
-    productProperty: string | null; // e.g. "fuelType"
     compareMethod: Operator | null;
     filterValue: string | number | null; // null = this answer doesn't filter, e.g. "No preference"
     label: string;
+};
+
+export type PropertyAnswer = {
+    productProperty: string | null; // e.g. "fuelType"
     isPreference: boolean;
+    /** One entry per chosen option: several with allowMultipleAnswers, otherwise one (empty: not answered) */
+    chosen: ChosenOption[];
 };
 
 export type PropertyAnswers = Record<string, PropertyAnswer>;
@@ -147,6 +154,8 @@ export type HeatingQuestion = {
     showIfKey: string | null; // a follow-up only shows when the chosen answer has this key
     dependsOn?: { documentId: string } | null; // the question this one is a follow-up to
     followUps?: HeatingQuestion[]; // the questions that are follow-ups to this one
+    isDependingOnHeatDemand: boolean | null; // asked in step 2, and only when the fire is to heat the room
+    extraDescription: string | null; // shown next to the question's label
 };
 
 // ---------- Property questions: each answer is compared with a property of the fire ----------
@@ -171,6 +180,8 @@ export type PropertyQuestion = {
     showIfKey: string | null;
     dependsOn?: { documentId: string } | null;
     followUps?: PropertyQuestion[];
+    allowMultipleAnswers: boolean | null; // several options can be chosen
+    extraDescription: string | null; // shown next to the question's label
 };
 
 // ---------- Categories: one step each ----------

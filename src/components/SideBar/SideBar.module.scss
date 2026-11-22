@@ -474,3 +474,35 @@
         }
     }
 }
+
+// "All of it · the fire is the main heat source"
+.shareValue {
+    font-size: 13px;
+    color: $muted;
+}
+
+// The slider, in steps of 10 %
+.slider {
+    width: 100%;
+    height: 28px;
+    margin: 4px 0 0;
+    accent-color: $ink;
+    cursor: pointer;
+}
+
+// "For looks" under the left end, "All the heat" under the right
+.sliderEnds {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: $muted;
+}
+
+// A follow-up question sits in a light box under the question it depends on
+.followUp {
+    margin-top: 6px;
+    padding: 12px;
+    background: $bg;
+    border-radius: $radius;
+    gap: 8px;
+}

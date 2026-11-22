@@ -1,12 +1,13 @@
 import FireFinder from "../fireFinder/FireFinder";
 import styles from "./FireFinderPage.module.scss";
-import { Brand, Product, QuestionCategory } from "@/types";
+import { Brand, HeatingQuestion, Product, QuestionCategory } from "@/types";
 
 interface FireFinderPageProps {
     products: Product[];
     questionCategories: QuestionCategory[];
     /** on a brand's own page (e.g. /stoke): that brand */
     brand?: Brand;
+    heatDemandQuestions: HeatingQuestion[];
 }
 
 /** The whole page: the intro and the fire finder. Used by the main page and the brand pages. */
@@ -35,6 +36,7 @@ export default function FireFinderPage(props: FireFinderPageProps) {
                     products={props.products}
                     questionCategories={props.questionCategories}
                     brand={props.brand}
+                    heatDemandQuestions={props.heatDemandQuestions}
                 />
             </main>
         </div>

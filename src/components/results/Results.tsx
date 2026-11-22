@@ -128,7 +128,11 @@ export default function Results(props: ResultsProps) {
 
     // ---------- Compare ----------
 
-    const all = [...props.result.best, ...props.result.more];
+    const all = [
+        ...props.result.best,
+        ...props.result.close,
+        ...props.result.more,
+    ];
     const compared = compareIds
         .map((id) => all.find((m) => m.product.documentId === id))
         .filter((m): m is Match => !!m);
@@ -215,13 +219,24 @@ export default function Results(props: ResultsProps) {
             <>
                 <ProductSlider
                     matches={props.result.best}
-                    kwNeeded={props.result.kwNeeded}
+                    kwNeeded={props.result.kwNeeded || null}
                     title="Best for your home"
                     onOpenProduct={openProduct}
                     compareIds={compareIds}
                     onToggleCompare={toggleCompare}
                     emptyText="No fire meets every requirement yet. Try a different answer in one of the steps."
                 />
+                {props.result.close.length > 0 && (
+                    <ProductSlider
+                        matches={props.result.close}
+                        kwNeeded={props.result.kwNeeded || null}
+                        title="Close to your heat requirement"
+                        variant="close"
+                        onOpenProduct={openProduct}
+                        compareIds={compareIds}
+                        onToggleCompare={toggleCompare}
+                    />
+                )}
                 {props.result.more.length > 0 && (
                     <ProductSlider
                         matches={props.result.more}

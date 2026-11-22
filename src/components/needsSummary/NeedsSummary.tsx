@@ -22,7 +22,6 @@ const FUELS = ["gas", "wood", "electric"] as const;
 export default function NeedsSummary(props: NeedsSummaryProps) {
     const location = props.location;
     const kw = props.result.kwNeeded;
-    const counts = props.result.counts;
     const ready = kw !== null;
 
     // Fuels that are still possible (all three until there are results)
@@ -36,7 +35,12 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
         location?.airShed ??
         (location?.region ? `${location.region} rules apply` : null);
 
-    const area = props.m2ToHeat ? Math.round(props.m2ToHeat * 10) / 10 : null;
+    // 0 kW means the fire is just for looks (0 % in step 2): no heat need, and the room size doesn't matter
+    const forLooks = kw === 0;
+    const area =
+        props.m2ToHeat && !forLooks
+            ? Math.round(props.m2ToHeat * 10) / 10
+            : null;
 
     return (
         <div
@@ -139,44 +143,6 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
                         </a>
                     </span>
                 </p>
-            )}
-
-            {props.showFunnel && (
-                <ol
-                    className={styles.funnel}
-                    aria-label="How your answers narrow the range"
-                >
-                    <li>
-                        <span>
-                            <b>{counts.range}</b> fires in the range
-                        </span>
-                        <Icon name="arrowRight" size={12} strokeWidth={1.8} />
-                    </li>
-                    <li>
-                        <span>
-                            <b>{counts.heat}</b> can heat {area} m²
-                        </span>
-                        <Icon name="arrowRight" size={12} strokeWidth={1.8} />
-                    </li>
-                    <li>
-                        <span>
-                            <b>{counts.allowed}</b> allowed at your address
-                        </span>
-                        <Icon name="arrowRight" size={12} strokeWidth={1.8} />
-                    </li>
-                    <li>
-                        <span>
-                            <b>{counts.fits}</b> suit your answers
-                        </span>
-                        <span aria-hidden="true">=</span>
-                    </li>
-                    <li>
-                        <span>
-                            <b>{props.result.best.length}</b> best +{" "}
-                            <b>{props.result.more.length}</b> you might love
-                        </span>
-                    </li>
-                </ol>
             )}
         </div>
     );

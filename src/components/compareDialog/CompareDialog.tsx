@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./CompareDialog.module.scss";
 import { FilterResult, Match } from "@/lib/filterFires";
 import { RuleProfile } from "@/types";
-import { FUEL_NAMES, INSTALL_TYPES, metres, toneFor } from "@/lib/display";
+import { FUEL_NAMES, INSTALL_TYPES, metres } from "@/lib/display";
+import ProductPicture from "../productPicture/ProductPicture";
 import { useDialog } from "@/lib/dialog";
 import Icon from "../icon/Icon";
 
@@ -40,7 +41,7 @@ export default function CompareDialog(props: CompareDialogProps) {
         return () => query.removeEventListener("change", update);
     }, []);
 
-    const kw = props.result.kwNeeded;
+    const kw = props.result.kwNeeded || null;
     const cols = props.compared;
     const area = props.m2ToHeat ? Math.round(props.m2ToHeat * 10) / 10 : null;
 
@@ -48,6 +49,7 @@ export default function CompareDialog(props: CompareDialogProps) {
         const position = props.result.best.indexOf(m);
         if (position === 0) return "Best match";
         if (position > 0) return `Best for your home · #${position + 1}`;
+        if (props.result.close.includes(m)) return "Close on heat";
         return "You might love this too";
     }
 
@@ -146,9 +148,10 @@ export default function CompareDialog(props: CompareDialogProps) {
 
     const fireHeader = (m: Match) => (
         <>
-            <div
+            <ProductPicture
+                product={m.product}
                 className={styles.thumb}
-                style={{ background: toneFor(m.product) }}
+                sizes="(max-width: 699px) 33vw, 300px"
             />
             <div className={styles.colName}>{m.product.name}</div>
             <div className={styles.colType}>

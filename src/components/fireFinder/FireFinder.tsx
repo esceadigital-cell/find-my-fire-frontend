@@ -4,6 +4,7 @@ import styles from "./FireFinder.module.scss";
 import {
     Brand,
     HeatingAnswers,
+    HeatingQuestion,
     LocationData,
     Product,
     PropertyAnswers,
@@ -21,16 +22,19 @@ interface FireFinderProps {
     questionCategories: QuestionCategory[];
     /** Added: the brand on a brand's own page (e.g. Stoke), or undefined on the main page */
     brand?: Brand;
+    heatDemandQuestions: HeatingQuestion[];
 }
 
 export default function FireFinder(props: FireFinderProps) {
     const [locationData, setLocationData] = useState<LocationData | null>(null);
     const [m2ToHeat, setM2ToHeat] = useState<number | null>(null);
+    // How much of the room the fire is to heat, 0–100 %. Starts at 100 (the fire is the main heat source)
+    const [heatShare, setHeatShare] = useState<number>(100);
     const [heatingAnswers, setHeatingAnswers] = useState<HeatingAnswers>({});
     const [propertyAnswers, setPropertyAnswers] = useState<PropertyAnswers>({});
     const [propertyOver2Hectares, setPropertyOver2Hectares] = useState<
         boolean | null
-    >(null);
+    >(false);
     const [replacingExistingWoodBurner, setReplacingExistingWoodBurner] =
         useState<boolean | null>(null);
 
@@ -74,6 +78,7 @@ export default function FireFinder(props: FireFinderProps) {
                 products: props.products,
                 country: locationData?.country ?? null,
                 m2ToHeat,
+                heatShare,
                 climateZone: locationData?.climateZone ?? null,
                 ruleProfile: locationData?.ruleProfile ?? null,
                 propertyOver2Hectares,
@@ -85,6 +90,7 @@ export default function FireFinder(props: FireFinderProps) {
             props.products,
             locationData,
             m2ToHeat,
+            heatShare,
             propertyOver2Hectares,
             replacingExistingWoodBurner,
             heatingAnswers,
@@ -92,17 +98,24 @@ export default function FireFinder(props: FireFinderProps) {
         ],
     );
 
-    /*console.log(
-        "FINAL RESULTS: ",
-        locationData,
-        m2ToHeat,
-        heatingAnswers,
-        propertyAnswers,
-    );*/
-
-    // =====================================================================
-    // Added: everything below is display only, it doesn't change any answers
-    // =====================================================================
+    // The categories without the step 2 questions (those are asked in step 2, not in a category).
+    // A category left with no questions is left out, so there's no empty step.
+    const questionCategories = useMemo(
+        () =>
+            props.questionCategories
+                .map((c) => ({
+                    ...c,
+                    heatingQuestions: c.heatingQuestions.filter(
+                        (q) => q.isDependingOnHeatDemand !== true,
+                    ),
+                }))
+                .filter(
+                    (c) =>
+                        c.heatingQuestions.length + c.propertyQuestions.length >
+                        0,
+                ),
+        [props.questionCategories],
+    );
 
     // Focus rings only show when the keyboard is used, not on every click
     useEffect(() => {
@@ -129,7 +142,7 @@ export default function FireFinder(props: FireFinderProps) {
         setFurthestStep((prev) => Math.max(prev, s));
     }, []);
 
-    const firesAt = firesAtStep(props.questionCategories);
+    const firesAt = firesAtStep(questionCategories);
     const totalSteps = props.questionCategories.length + 2;
     const showFires =
         result.kwNeeded !== null &&
@@ -156,7 +169,9 @@ export default function FireFinder(props: FireFinderProps) {
             replacingExistingWoodBurner,
             heatingAnswers,
             propertyAnswers,
-            questionCategories: props.questionCategories,
+            questionCategories: questionCategories,
+            heatShare,
+            heatDemandQuestions: props.heatDemandQuestions,
         });
         if (!left.length) return false;
         setHintedOnStep([...hintedOnStep, step]);
@@ -175,13 +190,13 @@ export default function FireFinder(props: FireFinderProps) {
     const stepTitles = [
         "Location",
         "The room",
-        ...props.questionCategories.map((c) => c.name),
+        ...questionCategories.map((c) => c.name),
     ];
 
     return (
         <div className={styles.wrapper}>
             <SideBar
-                questionCategories={props.questionCategories}
+                questionCategories={questionCategories}
                 updateLocationData={updateLocationData}
                 updateHeatingAnswers={updateHeatingAnswers}
                 updatePropertyAnswers={updatePropertyAnswers}
@@ -204,11 +219,14 @@ export default function FireFinder(props: FireFinderProps) {
                 todoSteps={hint ?? []}
                 fuels={[
                     ...new Set(
-                        [...result.best, ...result.more].map(
+                        [...result.best, ...result.close, ...result.more].map(
                             (m) => m.product.fuelType,
                         ),
                     ),
                 ]}
+                heatShare={heatShare}
+                setHeatShare={setHeatShare}
+                heatDemandQuestions={props.heatDemandQuestions}
             />
 
             <Results

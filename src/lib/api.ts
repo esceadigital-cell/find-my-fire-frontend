@@ -1,4 +1,4 @@
-import { Brand, Product } from "@/types";
+import { Brand, HeatingQuestion, Product } from "@/types";
 
 const STRAPI_URL = process.env.STRAPI_URL ?? "http://localhost:1337";
 const STRAPI_TOKEN = process.env.STRAPI_TOKEN;
@@ -19,8 +19,9 @@ async function strapi(path: string) {
 export async function getProducts(brand?: string): Promise<Product[]> {
     const brandFilter = brand ? `&filters[brands][slug][$eq]=${brand}` : "";
 
-    return strapi(
+    const products: Product[] = await strapi(
         `products?filters[active][$eq]=true${brandFilter}` +
+            `&populate[image][fields][0]=url&populate[image][fields][1]=alternativeText` +
             `&populate[markets][fields][0]=code` +
             `&populate[brands][fields][0]=slug&populate[brands][fields][1]=brandName` +
             `&populate[manufacturer][fields][0]=slug&populate[manufacturer][fields][1]=brandName` +
@@ -28,6 +29,17 @@ export async function getProducts(brand?: string): Promise<Product[]> {
             `&populate[productLinks][populate][brand][fields][0]=slug` +
             `&populate[productLinks][populate][configuration][fields][0]=configurationType` +
             `&pagination[pageSize]=200`,
+    );
+
+    // A local Strapi gives image addresses like "/uploads/tfs650.avif", without the server in front.
+    // The browser needs the full address, so put STRAPI_URL in front (Strapi Cloud already gives full ones).
+    return products.map((p) =>
+        p.image?.url.startsWith("/")
+            ? {
+                  ...p,
+                  image: { ...p.image, url: `${STRAPI_URL}${p.image.url}` },
+              }
+            : p,
     );
 }
 
@@ -54,6 +66,18 @@ export async function getPropertyQuestions() {
     );
 }
 
+// Asked in step 2, and only when the fire is to heat the room. They have no category,
+// so they're fetched on their own. Follow-ups come along through followUps.
+export async function getHeatDemandQuestions(): Promise<HeatingQuestion[]> {
+    return strapi(
+        `heating-questions?filters[isDependingOnHeatDemand][$eq]=true` +
+            `&filters[dependsOn][documentId][$null]=true` +
+            `&sort=order:asc&pagination[pageSize]=100` +
+            `&populate[options]=true` +
+            `&populate[followUps][populate][options]=true`,
+    );
+}
+
 //Question categories
 export async function getQuestionCategories() {
     return strapi(
@@ -62,10 +86,11 @@ export async function getQuestionCategories() {
             `&populate[heatingQuestions][sort][0]=order:asc` +
             `&populate[heatingQuestions][populate][options]=true` +
             `&populate[heatingQuestions][populate][followUps][populate][options]=true` +
-            // Property questions, the same
+            // Property questions, the same, plus the follow-ups' own follow-ups (e.g. piped gas → LPG)
             `&populate[propertyQuestions][sort][0]=order:asc` +
             `&populate[propertyQuestions][populate][options]=true` +
-            `&populate[propertyQuestions][populate][followUps][populate][options]=true`,
+            `&populate[propertyQuestions][populate][followUps][populate][options]=true` +
+            `&populate[propertyQuestions][populate][followUps][populate][followUps][populate][options]=true`,
     );
 }
 
@@ -97,27 +122,25 @@ export async function getAirSheds() {
 
 // ---------- Street lookup (OpenStreetMap Nominatim) ----------
 
-export async function findStreet(
-    street: string,
-    postcode: string,
-    country: string,
-) {
+// Looks up a whole address (street and town) in one country, and returns the point and its postcode.
+export async function findAddress(address: string, country: string) {
     const url =
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1` +
-        `&street=${encodeURIComponent(street)}&postalcode=${encodeURIComponent(postcode)}` +
-        `&countrycodes=${country.toLowerCase()}`;
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1` +
+        `&q=${encodeURIComponent(address)}` +
+        `&countrycodes=${country.toLowerCase()}`; // only search the chosen country
 
     const res = await fetch(url, {
         headers: { "User-Agent": "FindMyFire/0.1 (Escea fire finder)" },
         cache: "no-store",
     });
-    if (!res.ok) throw new Error(`Street lookup failed (${res.status})`);
+    if (!res.ok) throw new Error(`Address lookup failed (${res.status})`);
 
     const [hit] = await res.json();
     if (!hit) return null;
     return {
         lat: Number(hit.lat),
         lng: Number(hit.lon),
+        postcode: (hit.address?.postcode as string | undefined)?.trim() ?? null,
         address: hit.display_name as string,
     };
 }

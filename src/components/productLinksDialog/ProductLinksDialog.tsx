@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import styles from "./ProductLinksDialog.module.scss";
 import { Product, ProductLink } from "@/types";
-import { FUEL_NAMES, INSTALL_TYPES, toneFor } from "@/lib/display";
+import { FUEL_NAMES, INSTALL_TYPES } from "@/lib/display";
+import ProductPicture from "../productPicture/ProductPicture";
 import { useDialog } from "@/lib/dialog";
 import Icon from "../icon/Icon";
 
@@ -64,10 +65,11 @@ export default function ProductLinksDialog(props: ProductLinksDialogProps) {
                 </div>
 
                 <div className={styles.body}>
-                    {/* The picture (the fire's colour until there are product photos) */}
-                    <div
+                    {/* The picture (the fire's colour if it has no image) */}
+                    <ProductPicture
+                        product={product}
                         className={styles.picture}
-                        style={{ background: toneFor(product) }}
+                        sizes="(max-width: 699px) 100vw, 480px"
                     />
 
                     <p className={styles.lede}>

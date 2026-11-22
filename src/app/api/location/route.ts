@@ -1,5 +1,5 @@
 import {
-    findStreet,
+    findAddress,
     getAirSheds,
     getClimateAnchors,
     getClimateZones,
@@ -16,8 +16,8 @@ export async function GET(request: Request) {
     // 1. Read what the browser sent
     const params = new URL(request.url).searchParams;
     const country = params.get("country");
-    const postcode = params.get("postcode");
-    const street = params.get("street")?.trim() ?? "";
+    let postcode = params.get("postcode")?.trim() ?? "";
+    const address = params.get("address")?.trim() ?? "";
     const pinLat = params.get("lat");
     const pinLng = params.get("lng");
 
@@ -27,11 +27,45 @@ export async function GET(request: Request) {
             { status: 400 },
         );
     }
+
+    const countryName = country === "NZ" ? "New Zealand" : "Australia";
+
+    // 2. The address, if there is one: its exact point, and its postcode (unless one was typed)
+    let point: { lat: number; lng: number } | null = null;
+    let foundAddress: string | null = null;
+
+    if (pinLat && pinLng) {
+        // the user dragged the pin: that's the exact point
+        point = { lat: Number(pinLat), lng: Number(pinLng) };
+    } else if (address) {
+        const hit = await findAddress(address, country);
+        if (!hit) {
+            return Response.json(
+                {
+                    error: `We couldn’t find that address in ${countryName}. Check it, or type your postcode below.`,
+                },
+                { status: 404 },
+            );
+        }
+        point = { lat: hit.lat, lng: hit.lng };
+        foundAddress = hit.address;
+        if (!postcode) postcode = hit.postcode ?? "";
+        if (!postcode) {
+            return Response.json(
+                {
+                    error: "We found the address, but not its postcode. Please type it below.",
+                    needsPostcode: true,
+                },
+                { status: 422 },
+            );
+        }
+    }
+
     if (!postcode) {
         return Response.json({ error: "Enter a postcode" }, { status: 400 });
     }
 
-    // 2. Fetch what's needed from Strapi (at the same time)
+    // 3. Fetch what's needed from Strapi (at the same time)
     const [found, airSheds, anchors, zones] = await Promise.all([
         getPostcode(postcode, country),
         getAirSheds(),
@@ -39,27 +73,18 @@ export async function GET(request: Request) {
         getClimateZones(),
     ]);
     if (!found) {
-        return Response.json({ error: "Unknown postcode" }, { status: 404 });
+        return Response.json(
+            {
+                error: `We can’t find ${postcode} in ${countryName}. Check the number.`,
+            },
+            { status: 404 },
+        );
     }
 
-    // 3. The point to check: the street if it's found, otherwise the postcode's centre
-    let lat = found.lat;
-    let lng = found.lng;
-    let precise = false;
-
-    if (pinLat && pinLng) {
-        // the user dragged the pin: that's the exact point
-        lat = Number(pinLat);
-        lng = Number(pinLng);
-        precise = true;
-    } else if (street) {
-        const hit = await findStreet(street, postcode, country);
-        if (hit) {
-            lat = hit.lat;
-            lng = hit.lng;
-            precise = true;
-        }
-    }
+    // 4. The point to check: the address (or the dragged pin), otherwise the postcode's centre
+    const lat = point?.lat ?? found.lat;
+    const lng = point?.lng ?? found.lng;
+    const precise = point !== null;
 
     // 4. The climate zone, from the postcode
     const anchor = nearestAnchor(found.lat, found.lng, anchors); //AI
@@ -79,6 +104,7 @@ export async function GET(request: Request) {
         lat,
         lng,
         precise,
+        address: foundAddress,
         region: found.region?.name ?? null,
         airShed: airShed?.name ?? null,
         climateZone,

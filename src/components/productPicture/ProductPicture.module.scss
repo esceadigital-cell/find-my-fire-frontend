@@ -1,0 +1,17 @@
+@use "../../styles/variables" as *;
+
+.picture {
+    position: relative;
+    overflow: hidden;
+    background: $skeleton-light; // behind the image: a light, neutral tone
+
+    // The whole fire is shown, never cut off, with a little room around it
+    img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        //padding: 6%;
+    }
+}

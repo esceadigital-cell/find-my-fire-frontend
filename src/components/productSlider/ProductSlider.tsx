@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./ProductSlider.module.scss";
 import { Product } from "@/types";
 import { Match } from "@/lib/filterFires";
-import { FUEL_NAMES, INSTALL_TYPES, cardsPerRow, toneFor } from "@/lib/display";
+import { FUEL_NAMES, INSTALL_TYPES, cardsPerRow, metres } from "@/lib/display";
+import ProductPicture from "../productPicture/ProductPicture";
 
 interface ProductSliderProps {
     /** straight from the filter: result.best or result.more */
@@ -13,8 +14,8 @@ interface ProductSliderProps {
     kwNeeded?: number | null;
     /** e.g. "Best for your home" or "You might love these too" */
     title?: string;
-    /** "top": big heading and sandstone cards. "more": the grey box with smaller cards */
-    variant?: "top" | "more";
+    /** "top": big heading and sandstone cards. "close" and "more": the grey box with smaller cards */
+    variant?: "top" | "close" | "more";
     /** called when a card's "View" is clicked */
     onOpenProduct?: (product: Product) => void;
     // ---- Added: compare, and the text when the list is empty ----
@@ -107,11 +108,13 @@ export default function ProductSlider(props: ProductSliderProps) {
     const subtitle =
         variant === "top"
             ? `Showing ${range} · sorted by best match`
-            : `${range} · they suit your room and the rules, ranked lower only because of your answers`;
+            : variant === "close"
+              ? `${range} · they match all your answers, but give a little less heat than your room needs`
+              : `${range} · they suit your room and the rules, ranked lower only because of your answers`;
 
     return (
         <section
-            className={`${styles.slider} ${styles[variant]}`}
+            className={`${styles.slider} ${styles[variant === "top" ? "top" : "more"]}`}
             aria-label={props.title}
         >
             <div className={styles.head}>
@@ -172,14 +175,15 @@ export default function ProductSlider(props: ProductSliderProps) {
                     style={{ "--per": per } as React.CSSProperties}
                     onScroll={onScroll}
                 >
-                    {props.matches.map(({ product, misses }, i) => (
+                    {props.matches.map(({ product, misses, kwShort }, i) => (
                         <article
                             key={product.documentId}
                             className={styles.card}
                         >
-                            <div
+                            <ProductPicture
+                                product={product}
                                 className={styles.picture}
-                                style={{ background: toneFor(product) }}
+                                sizes="(max-width: 699px) 100vw, (max-width: 1099px) 35vw, 25vw"
                             >
                                 <span
                                     className={`${styles.tag} ${styles.fuel}`}
@@ -196,7 +200,7 @@ export default function ProductSlider(props: ProductSliderProps) {
                                         Best match
                                     </span>
                                 )}
-                            </div>
+                            </ProductPicture>
 
                             <div className={styles.body}>
                                 <h3>{product.name}</h3>
@@ -216,17 +220,27 @@ export default function ProductSlider(props: ProductSliderProps) {
                                     <ul className={styles.specs}>
                                         {product.maxOutputKw != null && (
                                             <li>
-                                                Up to {product.maxOutputKw} kW
-                                                {props.kwNeeded != null &&
-                                                    ` · you need ${props.kwNeeded}`}
+                                                {kwShort > 0 ? (
+                                                    // Close on heat: how far below the need
+                                                    <>
+                                                        ≈ {product.maxOutputKw}{" "}
+                                                        kW · {kwShort} kW under
+                                                        your {props.kwNeeded}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Up to{" "}
+                                                        {product.maxOutputKw} kW
+                                                        {props.kwNeeded !=
+                                                            null &&
+                                                            ` · you need ${props.kwNeeded}`}
+                                                    </>
+                                                )}
                                             </li>
                                         )}
                                         {product.width != null && (
                                             <li>
-                                                {Math.round(
-                                                    product.width / 100,
-                                                ) / 10}{" "}
-                                                m wide
+                                                {metres(product.width)} wide
                                             </li>
                                         )}
                                     </ul>

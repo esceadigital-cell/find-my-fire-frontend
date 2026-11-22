@@ -16,6 +16,8 @@ import {
 export type Progress = {
     location: LocationData | null;
     m2ToHeat: number | null;
+    heatShare: number;
+    heatDemandQuestions: HeatingQuestion[];
     propertyOver2Hectares: boolean | null;
     replacingExistingWoodBurner: boolean | null;
     heatingAnswers: HeatingAnswers;
@@ -33,25 +35,24 @@ function isAnswered(
 ) {
     if (kind === "heating")
         return p.heatingAnswers[question.documentId] != null;
-    const answer = p.propertyAnswers[question.documentId];
-    if (!answer) return false;
-    // A number question is answered when a number is typed, a button question when an option is chosen
-    return (question as PropertyQuestion).inputOption === "number"
-        ? answer.filterValue != null
-        : answer.optionId != null;
+    // Answered when something is chosen (a typed number counts as one chosen value)
+    return (p.propertyAnswers[question.documentId]?.chosen.length ?? 0) > 0;
 }
 
 /** The chosen option's key, used to open follow-ups */
-function chosenKey(
+/** The chosen options' keys, used to open follow-ups (several with allowMultipleAnswers) */
+function chosenKeys(
     question: Question,
     kind: "heating" | "property",
     p: Progress,
 ) {
-    const optionId =
+    const ids =
         kind === "heating"
-            ? p.heatingAnswers[question.documentId]?.optionId
-            : p.propertyAnswers[question.documentId]?.optionId;
-    return question.options.find((o) => o.id === optionId)?.key ?? null;
+            ? [p.heatingAnswers[question.documentId]?.optionId]
+            : (p.propertyAnswers[question.documentId]?.chosen ?? []).map(
+                  (c) => c.optionId,
+              );
+    return question.options.filter((o) => ids.includes(o.id)).map((o) => o.key);
 }
 
 /** The ids of the questions on screen in a category that haven't been answered */
@@ -78,9 +79,9 @@ export function unansweredIn(
     const missing: string[] = [];
     function check(kind: "heating" | "property", question: Question) {
         if (!isAnswered(question, kind, p)) missing.push(question.documentId);
-        const key = chosenKey(question, kind, p);
+        const keys = chosenKeys(question, kind, p);
         for (const f of question.followUps ?? []) {
-            if (key && f.showIfKey === key) check(kind, f);
+            if (f.showIfKey && keys.includes(f.showIfKey)) check(kind, f);
         }
     }
     for (const q of all)
@@ -100,7 +101,20 @@ export function missingInStep(step: number, p: Progress): string[] {
             p.replacingExistingWoodBurner === null && "replacing",
         ].filter((x): x is string => !!x);
     }
-    if (step === 2) return p.m2ToHeat ? [] : ["room"];
+    if (step === 2) {
+        // For looks only (0 %): nothing more to answer here
+        if (p.heatShare === 0) return [];
+        // Otherwise the room size, and the step 2 questions on screen
+        const step2 = {
+            documentId: "heat-demand",
+            name: "",
+            order: 0,
+            isPreferenceCategory: false,
+            heatingQuestions: p.heatDemandQuestions,
+            propertyQuestions: [],
+        };
+        return [...(p.m2ToHeat ? [] : ["room"]), ...unansweredIn(step2, p)];
+    }
     const category = p.questionCategories[step - 3];
     return category ? unansweredIn(category, p) : [];
 }

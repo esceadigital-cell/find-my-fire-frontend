@@ -1,6 +1,7 @@
 import {
     ClimateZone,
     HeatingAnswers,
+    Operator,
     Product,
     PropertyAnswer,
     PropertyAnswers,
@@ -17,40 +18,43 @@ type FilterInput = {
     replacingExistingWoodBurner: boolean | null;
     heatingAnswers: HeatingAnswers;
     propertyAnswers: PropertyAnswers;
+    /** how much of the room the fire is to heat, 0–100 %. At 0 the fire is only for looks */
+    heatShare: number;
 };
+
+// A fire up to this many kW below the heat need is "close": it goes in its own list instead of being removed
+const CLOSE_KW = 1.1;
 
 export type Match = {
     product: Product;
     misses: string[]; // the preferences it doesn't match, e.g. ["Gas"]
+    kwShort: number; // how many kW below the heat need it is (0 when it's enough)
 };
 
 export type FilterResult = {
     kwNeeded: number | null; // rounded up to one decimal: shown to the user and used for filtering
-    counts: { range: number; heat: number; allowed: number; fits: number };
-    best: Match[];
-    more: Match[];
+    best: Match[]; // every answer met, and enough heat
+    close: Match[]; // every answer met, but up to 1.1 kW short of the heat need
+    more: Match[]; // a preference missed (enough heat, or up to 1.1 kW short)
 };
 
 export function filterFires(input: FilterInput): FilterResult {
-    const counts = {
-        range: 0,
-        heat: 0,
-        allowed: 0,
-        fits: 0,
-    };
-
     // Without a country, a room size and a climate zone, there's nothing to calculate yet
-    if (!input.country || !input.m2ToHeat || !input.climateZone) {
+    if (
+        !input.country ||
+        !input.climateZone ||
+        (input.heatShare > 0 && !input.m2ToHeat)
+    ) {
         return {
             kwNeeded: null,
-            counts,
             best: [],
+            close: [],
             more: [],
         };
     }
 
     //Heat
-    const m2ToHeat = input.m2ToHeat;
+    const m2ToHeat = input.m2ToHeat ?? 0;
     const heatingAnswers = input.heatingAnswers;
     const climateZone = input.climateZone;
 
@@ -61,8 +65,10 @@ export function filterFires(input: FilterInput): FilterResult {
 
     const m2PerKw = Math.max(1, climateZone.baseM2PerKw + modifiers); // Never below 1 m² per kW, so lots of negative answers can't make it zero or negative
 
-    const kwNeeded = m2ToHeat / m2PerKw;
-    const kwNeededRoundedUp = Math.ceil(kwNeeded * 10) / 10; // up to one decimal
+    // The room's need, times the share the fire is to cover. At 0 % that's 0, so every fire passes the heat check
+    const kwNeeded = (m2ToHeat / m2PerKw) * (input.heatShare / 100);
+    // Up to one decimal. The tiny tolerance stops rounding errors (0.30000000000000004) from rounding up to 0.4
+    const kwNeededRoundedUp = Math.ceil(kwNeeded * 10 - 1e-9) / 10;
 
     //Rule profile
     let ruleProfile: RuleProfile | null = input.ruleProfile;
@@ -88,8 +94,10 @@ export function filterFires(input: FilterInput): FilterResult {
     const activeAnswers = Object.values(input.propertyAnswers).filter(
         (answer) =>
             answer.productProperty && // linked to a property on the product
-            answer.filterValue !== null && // e.g. "No preference" has no value
-            answer.filterValue !== "", // an empty field from Strapi counts as no value too
+            answer.chosen.length > 0 && // something is chosen
+            answer.chosen.every(
+                (c) => c.filterValue !== null && c.filterValue !== "",
+            ), // e.g. "No preference" has no value
     );
 
     const requirements = activeAnswers.filter((answer) => !answer.isPreference); // don't match: removed completely
@@ -97,24 +105,28 @@ export function filterFires(input: FilterInput): FilterResult {
 
     const best: Match[] = [];
     const more: Match[] = [];
+    const close: Match[] = [];
+
+    // The lowest output still shown: the need minus 1.1 kW (no lower limit when the fire is just for looks)
+    const lowestKw =
+        kwNeededRoundedUp > 0
+            ? Math.round((kwNeededRoundedUp - CLOSE_KW) * 10) / 10
+            : 0;
 
     //Looping through every product
     for (const product of input.products) {
         //country
         if (!product.markets.some((market) => market.code === input.country))
             continue;
-        counts.range++;
 
         //heat
-        if ((product.maxOutputKw ?? 0) < kwNeededRoundedUp) continue;
-        counts.heat++;
+        if ((product.maxOutputKw ?? 0) < lowestKw) continue;
 
         //Rule profile (only wood fires have rules)
         if (product.fuelType === "wood") {
             if (woodBlocked) continue; // this area only allows a wood fire that replaces an existing one
             if (ruleProfile && !meetsRule(product, ruleProfile)) continue;
         }
-        counts.allowed++;
 
         //requirements questions
         let missesARequirement = false;
@@ -125,15 +137,25 @@ export function filterFires(input: FilterInput): FilterResult {
             }
         }
         if (missesARequirement) continue;
-        counts.fits++;
 
         //preferences questions
         const misses = preferences
             .filter((answer) => !matches(product, answer))
-            .map((answer) => answer.label);
+            .map((answer) => answer.chosen.map((c) => c.label).join(" or ")); // e.g. "Gas or Electric"
 
-        if (misses.length === 0) best.push({ product, misses });
-        else more.push({ product, misses });
+        // How far below the need the fire is (0 when it's enough)
+        const kwShort = Math.max(
+            0,
+            Math.round((kwNeededRoundedUp - (product.maxOutputKw ?? 0)) * 10) /
+                10,
+        );
+        const match = { product, misses, kwShort };
+
+        if (misses.length > 0)
+            more.push(match); // a preference missed: "You might love these too", short or not
+        else if (kwShort > 0)
+            close.push(match); // every answer met, but a little short on heat
+        else best.push(match); // everything met
     }
 
     // Best: the smallest fire that's big enough first, since it's closest to the need
@@ -141,17 +163,21 @@ export function filterFires(input: FilterInput): FilterResult {
         (a, b) => (a.product.maxOutputKw ?? 0) - (b.product.maxOutputKw ?? 0),
     );
 
-    // More: fewest misses first, then the smallest fire
+    // Close: the one closest to the need first
+    close.sort((a, b) => a.kwShort - b.kwShort);
+
+    // More: fewest misses first, then the ones with enough heat, then the smallest fire
     more.sort(
         (a, b) =>
             a.misses.length - b.misses.length ||
+            a.kwShort - b.kwShort ||
             (a.product.maxOutputKw ?? 0) - (b.product.maxOutputKw ?? 0),
     );
 
     return {
         kwNeeded: kwNeededRoundedUp,
-        counts,
         best,
+        close,
         more,
     };
 }
@@ -162,13 +188,23 @@ const RELATION_FIELDS: Record<string, string> = {
     brands: "brandName",
 };
 
-/** Does a product match one property answer? */
+/** Does a product match an answer? With several chosen options, matching any one of them is enough. */
 function matches(product: Product, answer: PropertyAnswer) {
     const property = answer.productProperty ?? "";
+    return answer.chosen.some((c) =>
+        matchesOption(product, property, c.compareMethod, c.filterValue),
+    );
+}
 
+/** Does a product match one chosen option? */
+function matchesOption(
+    product: Product,
+    property: string,
+    compareMethod: Operator | null,
+    value: string | number | null,
+) {
     // The product's value for the property, e.g. product["fuelType"] → "wood"
     const productValue = (product as Record<string, unknown>)[property];
-    const value = answer.filterValue;
 
     // A relation, e.g. configurations: [{ configurationType: "Corner" }, { configurationType: "Single sided" }]
     // "equals" means the product has it, "not equals" means it doesn't
@@ -177,10 +213,10 @@ function matches(product: Product, answer: PropertyAnswer) {
         const hasIt = productValue.some(
             (item) => String(item[field]) === String(value),
         );
-        return answer.compareMethod === "not equals" ? !hasIt : hasIt;
+        return compareMethod === "not equals" ? !hasIt : hasIt;
     }
 
-    switch (answer.compareMethod) {
+    switch (compareMethod) {
         case "less or equal":
             return (
                 productValue != null && Number(productValue) <= Number(value)

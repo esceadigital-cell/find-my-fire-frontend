@@ -14,9 +14,10 @@ interface QuestionCategoryStepProps {
     heatingAnswers: HeatingAnswers;
     propertyAnswers: PropertyAnswers;
     onHeatingAnswer: (question: HeatingQuestion, option: HeatingOption) => void;
+    /** the chosen options: one for single-choice questions, one or more with allowMultipleAnswers */
     onPropertyAnswer: (
         question: PropertyQuestion,
-        option: PropertyOption,
+        options: PropertyOption[],
     ) => void;
     onPropertyNumber: (
         question: PropertyQuestion,
@@ -59,12 +60,47 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
     // When an answer is chosen, the follow-ups waiting for a different key are hidden: remove their answers
     function hideFollowUps(
         question: HeatingQuestion | PropertyQuestion,
-        option: { key: string | null },
+        keys: (string | null)[],
     ) {
-        const hidden = (question.followUps ?? [])
-            .filter((f) => !option.key || f.showIfKey !== option.key)
-            .map((f) => f.documentId);
-        if (hidden.length) props.removeAnswers(hidden);
+        const hidden = (question.followUps ?? []).filter(
+            (f) => !f.showIfKey || !keys.includes(f.showIfKey),
+        );
+
+        // The hidden follow-ups, and their follow-ups, all the way down
+        const ids: string[] = [];
+        const collect = (q: HeatingQuestion | PropertyQuestion) => {
+            ids.push(q.documentId);
+            (q.followUps ?? []).forEach(collect);
+        };
+        hidden.forEach(collect);
+
+        if (ids.length) props.removeAnswers(ids);
+    }
+
+    /**
+     * Clicking an option of a property question.
+     * One answer: that option replaces the old one. Several answers (allowMultipleAnswers):
+     * clicking an option adds it, clicking it again removes it.
+     */
+    function handlePropertyOptionClick(
+        question: PropertyQuestion,
+        option: PropertyOption,
+        chosenIds: number[],
+    ) {
+        let ids: number[];
+        if (!question.allowMultipleAnswers)
+            ids = [option.id]; // one answer: overwrite
+        else if (chosenIds.includes(option.id))
+            ids = chosenIds.filter((id) => id !== option.id); // chosen: remove it
+        else ids = [...chosenIds, option.id]; // not chosen: add it
+
+        const chosen = question.options.filter((o) => ids.includes(o.id)); // in the question's own order
+        hideFollowUps(
+            question,
+            chosen.map((o) => o.key),
+        );
+        if (chosen.length) props.onPropertyAnswer(question, chosen);
+        else props.removeAnswers([question.documentId]); // nothing chosen: not answered
     }
 
     // 3. One question: its buttons, and below them the follow-ups that the chosen answer opens
@@ -105,7 +141,8 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
                     <input
                         type="number"
                         inputMode="decimal"
-                        value={answer?.filterValue ?? ""}
+                        step="any" // decimals allowed, e.g. 1.8 (m)
+                        value={answer?.chosen[0]?.filterValue ?? ""}
                         onChange={(e) =>
                             props.onPropertyNumber(
                                 question,
@@ -118,21 +155,27 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
                 </label>
             );
         }
-
-        // Heating answers store the option id directly; property answers store it in optionId
-        const chosenId =
+        // The chosen options: one for heating and single-choice questions, several with allowMultipleAnswers
+        const chosenIds: number[] = (
             item.kind === "heating"
-                ? props.heatingAnswers[item.question.documentId]?.optionId
-                : props.propertyAnswers[item.question.documentId]?.optionId;
+                ? [props.heatingAnswers[item.question.documentId]?.optionId]
+                : (
+                      props.propertyAnswers[item.question.documentId]?.chosen ??
+                      []
+                  ).map((c) => c.optionId)
+        ).filter((id): id is number => id != null);
 
-        const chosen = item.question.options.find(
-            (option) => option.id === chosenId,
-        );
+        const chosenKeys = item.question.options
+            .filter((o) => chosenIds.includes(o.id))
+            .map((o) => o.key);
 
-        // Follow-ups only show if the chosen answer has the key they wait for
+        // Follow-ups show if any chosen option has the key they wait for
         const openFollowUps = (item.question.followUps ?? []).filter(
-            (f) => chosen?.key && f.showIfKey === chosen.key,
+            (f) => f.showIfKey && chosenKeys.includes(f.showIfKey),
         );
+
+        const multiple =
+            item.kind === "property" && !!item.question.allowMultipleAnswers;
 
         return (
             <div
@@ -150,7 +193,12 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
                     undefined
                 }
             >
-                <span className={styles.label}>{item.question.text}</span>
+                <span className={styles.label}>
+                    {item.question.text}
+                    {multiple && (
+                        <span className={styles.optTag}> (choose any)</span>
+                    )}
+                </span>
 
                 {/* Five or more options are shown as a grid */}
                 <div
@@ -164,18 +212,21 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
                         <button
                             key={option.id}
                             type="button"
-                            aria-pressed={chosenId === option.id}
+                            aria-pressed={chosenIds.includes(option.id)}
                             onClick={() => {
-                                hideFollowUps(item.question, option);
-                                item.kind === "heating"
-                                    ? props.onHeatingAnswer(
-                                          item.question,
-                                          option as HeatingOption,
-                                      )
-                                    : props.onPropertyAnswer(
-                                          item.question,
-                                          option as PropertyOption,
-                                      );
+                                if (item.kind === "heating") {
+                                    hideFollowUps(item.question, [option.key]);
+                                    props.onHeatingAnswer(
+                                        item.question,
+                                        option as HeatingOption,
+                                    );
+                                } else {
+                                    handlePropertyOptionClick(
+                                        item.question,
+                                        option as PropertyOption,
+                                        chosenIds,
+                                    );
+                                }
                             }}
                         >
                             {option.label}
