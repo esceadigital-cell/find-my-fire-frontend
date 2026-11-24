@@ -1,0 +1,88 @@
+@use "../../styles/variables" as *;
+
+// The "?" sits after the label, on the same line
+.tip {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+.button {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    border: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(20, 20, 20, 0.09);
+    color: $ink;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    &:hover,
+    &[aria-expanded="true"] {
+        background: rgba(20, 20, 20, 0.16);
+    }
+}
+
+// The bubble, fixed to the screen
+.bubble {
+    position: fixed;
+    z-index: 60;
+    max-width: min(260px, calc(100vw - 16px));
+    padding: 10px 12px;
+    border-radius: $radius;
+    background: $bg;
+    color: $ink;
+    border: 1px solid $line;
+    box-shadow: 0 6px 18px rgba(20, 20, 20, 0.12);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+        opacity 0.18s ease,
+        transform 0.25s $ease;
+    pointer-events: none;
+
+    b {
+        font-weight: 500;
+    }
+}
+
+.below {
+    transform: translateY(-4px);
+}
+
+.on {
+    opacity: 1;
+    transform: none;
+}
+
+// The small point towards the "?"
+.arrow {
+    position: absolute;
+    top: 100%;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    background: $bg;
+    border-right: 1px solid $line;
+    border-bottom: 1px solid $line;
+    transform: rotate(45deg);
+
+    .below & {
+        top: auto;
+        bottom: 100%;
+        margin: 0 0 -5px -5px;
+        transform: rotate(225deg);
+    }
+}

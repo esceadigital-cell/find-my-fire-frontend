@@ -1,0 +1,397 @@
+@use "../../styles/variables" as *;
+
+// ---------- The section ----------
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+// Best for your home: big heading, cards on sandstone
+.top h2 {
+    font-size: 40px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+
+    @include tablet-down {
+        font-size: 32px;
+    }
+}
+
+// Close and "You might love these too": a box each, in its own colour (below)
+.box {
+    padding: 28px;
+    border-radius: $radius;
+
+    h2 {
+        font-size: 26px;
+        font-weight: 400;
+        line-height: 1.1;
+    }
+}
+
+// "Close to your heat requirement": grey
+.close {
+    background: #edeceb;
+}
+
+// "You might love these too": sand
+.more {
+    background: #f1ece7;
+}
+
+.head {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid $line;
+}
+
+// The line under the heading: the left part grows, so Sort by sits at the right end.
+// If it doesn't fit, Sort by wraps to the start of the next line.
+.subRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    font-size: 14px;
+    color: $muted;
+}
+
+.subLeft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sep {
+    color: $muted;
+}
+
+.fuelTypes {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.fuelKey {
+    margin-right: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: $muted;
+}
+
+.ftag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border: 1px solid $line;
+    border-radius: $radius;
+    background: $bg;
+    color: $ink;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.fdot {
+    @include fuel-dot;
+    @include fuel-dot-colours;
+}
+
+.empty {
+    padding: 24px;
+    border: 1px dashed rgba(20, 20, 20, 0.25);
+    border-radius: $radius;
+    color: $muted;
+}
+
+// ---------- The grid ----------
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(var(--per, 3), minmax(0, 1fr));
+    gap: 16px;
+}
+
+.card {
+    position: relative; // the View button covers the whole card
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-radius: $radius;
+    overflow: hidden;
+    background: $sandstone;
+    cursor: pointer;
+    animation: cardIn 0.45s $ease both;
+    animation-delay: calc(min(var(--k, 0), 8) * 40ms);
+
+    .box & {
+        background: $bg;
+    }
+}
+
+@keyframes cardIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card {
+        animation: none;
+    }
+}
+
+.picture {
+    aspect-ratio: 1 / 1;
+    max-height: max(140px, calc(100vh - 600px));
+    width: 100%;
+
+    @include tablet-down {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+// The fuel tag and "Best match" on the picture
+.tag {
+    position: absolute;
+    top: 10px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: $radius;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    left: 10px;
+    background: $bg;
+    color: $ink;
+}
+
+.badge {
+    right: 10px;
+    background: $accent;
+    color: #fff;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 16px 6px;
+
+    h3 {
+        font-size: 20px;
+        font-weight: 400;
+        line-height: 1.2;
+    }
+}
+
+.type {
+    font-size: 13px;
+    color: $muted;
+    margin-bottom: 6px;
+}
+
+// The small table: Heat, Size, Install
+.table {
+    display: flex;
+    flex-direction: column;
+    margin: 2px 0 0;
+    font-size: 13px;
+
+    > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    dt {
+        color: $muted;
+    }
+
+    dd {
+        margin: 0;
+        text-align: right;
+    }
+}
+
+.dim {
+    margin: 0 2px 0 6px;
+    font-size: 11px;
+    color: $muted;
+}
+
+.approx {
+    color: $accent;
+}
+
+.ok {
+    margin-left: 4px;
+    display: inline-flex;
+    vertical-align: -1px;
+}
+
+.foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px 14px;
+    border-top: 1px solid rgba(20, 20, 20, 0.12);
+    margin-left: 16px;
+    margin-right: 16px;
+    padding-left: 0;
+    padding-right: 0;
+    font-size: 13px;
+}
+
+// "View DFS550": its click area is stretched over the whole card
+.view {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $ink;
+    font: inherit;
+    text-decoration: underline;
+    text-align: left;
+    cursor: pointer;
+
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+}
+
+// Compare sits above the stretched button, so ticking doesn't open the fire
+.compare {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+
+    input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: $ink;
+    }
+}
+
+// ---------- Show more ----------
+
+.moreRow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-top: 4px;
+    font-size: 14px;
+    color: $muted;
+}
+
+.moreButton {
+    @include btn;
+    min-width: 180px;
+}
+
+// ---------- Phones: a row that scrolls sideways ----------
+
+.track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 0;
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    .card {
+        flex: 0 0 64%;
+        scroll-snap-align: start;
+    }
+
+    .picture {
+        aspect-ratio: 4 / 3;
+        max-height: none;
+    }
+}
+
+// "3 / 14" and the two arrows (the design guide's outline icon buttons)
+.trackNav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 13px;
+    color: $muted;
+
+    span {
+        margin-right: auto;
+    }
+}
+
+.arrow {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(20, 20, 20, 0.2);
+    border-radius: 4px;
+    background: transparent;
+    color: $ink;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+}
+
+// Phones: the grey boxes get a little less padding
+@include phone {
+    .box {
+        padding: 18px;
+    }
+
+    .top h2 {
+        font-size: 28px;
+    }
+}

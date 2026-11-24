@@ -7,36 +7,36 @@
     z-index: 40;
     background: $scrim;
     display: flex;
-    align-items: flex-start;
+    align-items: center; // centred, with the same gap above and below
     justify-content: center;
-    padding: calc(32px + env(safe-area-inset-top, 0px))
-        max(32px, env(safe-area-inset-right, 0px))
-        calc(32px + env(safe-area-inset-bottom, 0px))
-        max(32px, env(safe-area-inset-left, 0px));
-    overflow-y: auto;
+    padding: calc(24px + env(safe-area-inset-top, 0px))
+        max(24px, env(safe-area-inset-right, 0px))
+        calc(24px + env(safe-area-inset-bottom, 0px))
+        max(24px, env(safe-area-inset-left, 0px));
 
-    @include tablet-down {
-        padding: calc(16px + env(safe-area-inset-top, 0px))
-            max(16px, env(safe-area-inset-right, 0px))
-            calc(16px + env(safe-area-inset-bottom, 0px))
-            max(16px, env(safe-area-inset-left, 0px));
-    }
+    // Phones: below the pinned "Find my fireplace" bar (56px), and below the reminder while it shows
     @include phone {
-        padding: env(safe-area-inset-top, 0px) 0 0;
+        padding: calc(
+                env(safe-area-inset-top, 0px) + 56px + 10px + var(--drop, 0px)
+            )
+            14px calc(14px + env(safe-area-inset-bottom, 0px));
+        transition: padding 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 }
 
+// As tall as its content, up to the space between the gaps; the properties scroll inside if needed
 .panel {
     background: $bg;
     border-radius: $radius;
     width: min(520px, 100%);
-    margin: auto 0;
+    max-height: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 
     @include phone {
-        margin: 0;
-        min-height: 100%;
-        border-radius: 0;
+        width: 100%;
+        border-radius: 12px;
     }
 }
 
@@ -74,6 +74,8 @@
 }
 
 .body {
+    flex: 1;
+    min-height: 0;
     padding: 20px 24px 24px;
     display: flex;
     flex-direction: column;
@@ -84,41 +86,156 @@
     }
 }
 
-// Large picture, 4:3 like the compare dialog
-.picture {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    border-radius: 2px;
-}
-
 .lede {
     font-size: 14px;
     color: $muted;
 }
 
+// Several versions: buttons side by side, each only as wide as its text, wrapping onto a new line when needed
 .options {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: none;
 }
 
-// One version: looks like an option button, with an arrow out
+// One version: as small as it can be, with its arrow out
 .option {
-    min-height: 48px;
-    padding: 0 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 14px;
     border: 1px solid $border;
     border-radius: $radius;
     background: $field;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 15px;
     color: $ink;
+    font-size: 15px;
+    white-space: nowrap;
     text-decoration: none;
 
     &:hover {
         border-color: $ink;
         color: $ink;
+    }
+}
+
+// The picture: a fixed height, so the properties get the room
+.picture {
+    width: 100%;
+    flex: none;
+    height: clamp(100px, 26vh, 260px);
+    border-radius: 2px;
+}
+
+// The properties: grey boxes, scrolling between the picture and the buttons
+.scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overscroll-behavior: contain;
+}
+
+// Holds the scroll area, so the shadow at the bottom isn't faded along with the content
+.scrollWrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+
+    // While there's more below: a soft shadow along the bottom edge
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 24px;
+        background: linear-gradient(
+            to bottom,
+            rgba(20, 20, 20, 0),
+            rgba(20, 20, 20, 0.5)
+        );
+        border-bottom: 1px solid rgba(20, 20, 20, 0.12);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
+}
+
+.more::after {
+    opacity: 1;
+}
+
+// More below: the bottom of the list fades out too
+.fade {
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 max(50%, calc(100% - 72px)),
+        transparent
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        #000 max(50%, calc(100% - 72px)),
+        transparent
+    );
+}
+
+.group {
+    padding: 12px 14px;
+    border-radius: $radius;
+    background: $panel;
+
+    h3 {
+        margin-bottom: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: $muted;
+    }
+
+    dl {
+        margin: 0;
+    }
+
+    dl > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 5px 0;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    dt {
+        color: $muted;
+    }
+
+    dd {
+        margin: 0;
+        text-align: right;
+    }
+}
+
+// One link: a full-width dark button, "View on Escea"
+.go {
+    @include btn;
+    @include btn-solid;
+    flex: none;
+    width: 100%;
+    gap: 8px;
+    text-decoration: none;
+
+    &:hover {
+        color: $bg;
     }
 }

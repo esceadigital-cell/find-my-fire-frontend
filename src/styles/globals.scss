@@ -101,3 +101,40 @@ h2 {
         animation: none !important;
     }
 }
+
+// ---------- Slim, quiet scrollbars ----------
+// Only for scroll areas inside the page (the filter, the pop-ups); the page's own scrollbar stays as it is.
+body * {
+    &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        border-radius: 8px;
+        background: rgba(20, 20, 20, 0.22);
+    }
+    &::-webkit-scrollbar-thumb:hover {
+        background: rgba(20, 20, 20, 0.35);
+    }
+    &::-webkit-scrollbar-button {
+        display: none;
+    }
+}
+
+// Browsers without ::-webkit-scrollbar (Firefox) use the standard properties instead
+@supports not selector(::-webkit-scrollbar) {
+    body * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(20, 20, 20, 0.22) transparent;
+    }
+}
+
+
+// Phones: while the filter is open as a sheet, the page behind it doesn't scroll
+html.sheet-open,
+html.sheet-open body {
+    overflow: hidden;
+}

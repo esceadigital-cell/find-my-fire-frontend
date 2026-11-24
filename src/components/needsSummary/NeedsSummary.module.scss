@@ -346,3 +346,40 @@
         padding-top: 14px;
     }
 }
+
+
+// ---------- Four cells: Heat needed · Space · Climate · Region ----------
+.strip {
+    grid-template-columns: 1.25fr 0.75fr 0.95fr 0.95fr;
+}
+
+// Compact: the whole strip is a button to show it in full
+.compact {
+    cursor: pointer;
+}
+
+// "SHOWING 8 best matches · 12 close on heat · 4 worth a look"
+.showing {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 4px;
+    font-size: 13px;
+    color: $ink;
+}
+
+.showingKey {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: $muted;
+}
+
+.showingValue {
+    min-width: 0;
+
+    > span {
+        white-space: nowrap;
+    }
+}

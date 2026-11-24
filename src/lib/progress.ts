@@ -109,7 +109,7 @@ export function missingInStep(step: number, p: Progress): string[] {
             documentId: "heat-demand",
             name: "",
             order: 0,
-            isPreferenceCategory: false,
+            isOptionalCategory: false,
             heatingQuestions: p.heatDemandQuestions,
             propertyQuestions: [],
         };
@@ -119,16 +119,16 @@ export function missingInStep(step: number, p: Progress): string[] {
     return category ? unansweredIn(category, p) : [];
 }
 
-/** Is a step required? Steps 1 and 2 are, and every category that isn't a preference category. */
+/** Is a step required? Steps 1 and 2 are, and every category that isn't optional (isOptionalCategory). */
 export function isRequiredStep(step: number, p: Progress) {
     if (step <= 2) return true;
-    return !p.questionCategories[step - 3]?.isPreferenceCategory;
+    return !p.questionCategories[step - 3]?.isOptionalCategory;
 }
 
-/** The step where the fires start showing: the first preference category, or step 3 if there are none */
+/** The step where the fires start showing: the first optional category, or the last step if there are none */
 export function firesAtStep(categories: QuestionCategory[]) {
-    const first = categories.findIndex((c) => c.isPreferenceCategory);
-    return first >= 0 ? first + 3 : 3;
+    const first = categories.findIndex((c) => c.isOptionalCategory);
+    return first >= 0 ? first + 3 : categories.length + 2; // no optional category: the last step
 }
 
 /** All steps (numbered from 1) that still have unanswered questions, for the hint */

@@ -147,3 +147,34 @@
         transform: none;
     }
 }
+
+
+// ---------- While the filter is collapsed (tablet and desktop) ----------
+// The heading sits above the narrow column, on two lines, without the line under it.
+@include tablet-up {
+    :global(body.rail) .intro {
+        width: calc(max(24px, env(safe-area-inset-left, 0px)) + 180px);
+    }
+
+    :global(body.rail) .title {
+        font-size: 20px;
+        white-space: normal;
+    }
+
+    :global(body.rail) .lede {
+        display: none;
+    }
+}
+
+@include desktop {
+    :global(body.rail) .intro {
+        width: calc(max(32px, env(safe-area-inset-left, 0px)) + 180px);
+    }
+}
+
+// While the filter collapses or opens, the heading takes its new size at once (no easing),
+// so nothing moves after the box lands
+:global(body.rail-anim) .intro,
+:global(body.rail-anim) .intro * {
+    transition: none !important;
+}

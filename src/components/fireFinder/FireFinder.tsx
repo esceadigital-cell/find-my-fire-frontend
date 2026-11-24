@@ -10,10 +10,11 @@ import {
     PropertyAnswers,
     QuestionCategory,
 } from "@/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import SideBar from "../SideBar/SideBar";
 import Results from "../results/Results";
-import HintToast from "../hintToast/HintToast";
+import Reminder, { stepList } from "../reminder/Reminder";
 import { filterFires } from "@/lib/filterFires";
 import { firesAtStep, stepsWithUnanswered } from "@/lib/progress";
 
@@ -148,20 +149,48 @@ export default function FireFinder(props: FireFinderProps) {
         result.kwNeeded !== null &&
         (furthestStep >= firesAt || furthestStep === totalSteps);
 
-    // ---------- The hint: "Answer 2 more steps for better recommendations" ----------
-    // Shown when a fire is clicked (or ticked for comparing) while questions are still unanswered.
-    // Once per step the user is on, so it doesn't nag.
+    // ---------- Phones ----------
+    // First pass: the filter is a card under the heading, and the fires stay hidden.
+    // "See your N fires" ends it: the filter becomes a pinned bar, and the fires appear.
+    // Tapping the bar opens the filter as a full-screen sheet; the page behind it doesn't scroll.
+    const [phone, setPhone] = useState(false);
+    const [phoneDone, setPhoneDone] = useState(false);
+    const [sheetOpen, setSheetOpen] = useState(false);
 
-    const [hint, setHint] = useState<number[] | null>(null); // the steps it lists, or null when closed
-    const [hintedOnStep, setHintedOnStep] = useState<number[]>([]);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 699px)");
+        const update = () => {
+            setPhone(query.matches);
+            if (!query.matches) setSheetOpen(false); // widening the window closes the sheet
+        };
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle("sheet-open", sheetOpen);
+    }, [sheetOpen]);
+
+    // ---------- The reminder: "Answer steps 2, 3 and 4 to get better recommendations" ----------
+    // Shown the first time a fire is opened (or ticked for comparing, not on phones) while questions are missing.
+    // Shown once, and again only after the step in the filter has changed. It never blocks the click.
+
+    const [reminder, setReminder] = useState<number[] | null>(null); // the steps it lists, or null when not showing
+    const [reminded, setReminded] = useState(false);
+    const [remindCount, setRemindCount] = useState(0); // tells SideBar to mark every unfinished step
+    const [closeProduct, setCloseProduct] = useState(0); // tells Results to close the product pop-up
     const [stepRequest, setStepRequest] = useState<{
         step: number;
         count: number;
     } | null>(null);
+    const rattle = useRef(0);
 
-    /** Returns true if the hint was shown (the click shouldn't go on to open the fire) */
-    function maybeShowHint() {
-        if (hint || hintedOnStep.includes(step)) return false;
+    useEffect(() => setReminded(false), [step]); // a new step: it may show once more
+
+    function maybeRemind(what: "open" | "compare") {
+        const phone = window.matchMedia("(max-width: 699px)").matches;
+        if (reminded || reminder || (what === "compare" && phone)) return;
         const left = stepsWithUnanswered({
             location: locationData,
             m2ToHeat,
@@ -173,14 +202,195 @@ export default function FireFinder(props: FireFinderProps) {
             heatShare,
             heatDemandQuestions: props.heatDemandQuestions,
         });
-        if (!left.length) return false;
-        setHintedOnStep([...hintedOnStep, step]);
-        setHint(left);
-        return true;
+        if (!left.length) return;
+        setReminded(true);
+        setReminder(left);
+        setRemindCount((c) => c + 1);
+
+        // Desktop: the filter rattles right after the reminder's shake, unless it was clicked first
+        if (
+            !phone &&
+            !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+            window.clearTimeout(rattle.current);
+            rattle.current = window.setTimeout(() => {
+                document
+                    .querySelector("aside[data-filters]")
+                    ?.animate(
+                        [
+                            { transform: "translateX(0)" },
+                            { transform: "translateX(-5px) rotate(-0.4deg)" },
+                            { transform: "translateX(5px) rotate(0.4deg)" },
+                            { transform: "translateX(-3px)" },
+                            { transform: "translateX(0)" },
+                        ],
+                        { duration: 450, easing: "ease-out" },
+                    );
+            }, 1800);
+        }
     }
 
-    function goToStep(target: number) {
-        setHint(null);
+    /** Clicking the reminder: the pop-up closes, and the filter opens on the first step with missing answers */
+    function openFirstMissing() {
+        if (!reminder) return;
+        window.clearTimeout(rattle.current);
+        setCloseProduct((c) => c + 1);
+        railTo(false);
+        if (phone && phoneDone) setSheetOpen(true); // phones: tapping it opens the filter
+        setStepRequest((prev) => ({
+            step: reminder[0],
+            count: (prev?.count ?? 0) + 1,
+        }));
+    }
+
+    // Phones: after the reminder, the bar keeps saying which steps are left, until they're answered
+    const left =
+        remindCount > 0
+            ? stepsWithUnanswered({
+                  location: locationData,
+                  m2ToHeat,
+                  propertyOver2Hectares,
+                  replacingExistingWoodBurner,
+                  heatingAnswers,
+                  propertyAnswers,
+                  questionCategories: questionCategories,
+                  heatShare,
+                  heatDemandQuestions: props.heatDemandQuestions,
+              })
+            : [];
+    const barNote = left.length
+        ? `Answer ${stepList(left)} for better recommendations`
+        : null;
+
+    // ---------- The collapsed filter (tablet and desktop) ----------
+    // "See your N fires" shrinks the filter to a narrow column with the steps; the results get wider.
+    // It never collapses by itself. Clicking a step (or the filter icon) opens it there again.
+    const [rail, setRail] = useState(false);
+    useEffect(() => {
+        document.body.classList.toggle("rail", rail);
+    }, [rail]);
+
+    /**
+     * Collapses or opens the filter, animated like the mockup:
+     * - a copy of the old box moves and resizes to where the new one is (450 ms), its content fading out,
+     *   and the new box's content fades in as it lands
+     * - the results move and widen at the same time, so the cards just get wider (no scaling)
+     * The heading's height (--intro-h) is frozen while collapsed, so nothing moves up afterwards.
+     */
+    function railTo(next: boolean) {
+        if (next === rail) return;
+        const box = document.querySelector<HTMLElement>("aside[data-filters]");
+        const results = document.querySelector<HTMLElement>(
+            'section[aria-label="Recommended fires"]',
+        );
+        const intro = document.querySelector<HTMLElement>("[data-intro]");
+        const reduced = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        ).matches;
+        if (!box || !results || reduced) {
+            document.body.classList.toggle("rail", next);
+            setRail(next);
+            return;
+        }
+
+        const DUR = 450;
+        const EASE = "cubic-bezier(.2,.8,.2,1)";
+        const b0 = box.getBoundingClientRect();
+        const r0 = results.getBoundingClientRect();
+
+        // The copy of the old box, fixed exactly where it is now
+        const ghost = box.cloneNode(true) as HTMLElement;
+        ghost.removeAttribute("data-filters");
+        ghost.setAttribute("aria-hidden", "true");
+        Object.assign(ghost.style, {
+            position: "fixed",
+            left: `${b0.left}px`,
+            top: `${b0.top}px`,
+            width: `${b0.width}px`,
+            height: `${b0.height}px`,
+            margin: "0",
+            zIndex: "50",
+            pointerEvents: "none",
+            overflow: "hidden",
+        });
+        document.body.appendChild(ghost);
+
+        // Switch now, so the new layout can be measured
+        document.body.classList.add("rail-anim"); // no transitions on the heading while it moves
+        document.body.classList.toggle("rail", next);
+        if (!next && intro) {
+            // opening: the heading's height is synced straight away, so nothing jumps
+            document.documentElement.style.setProperty(
+                "--intro-h",
+                `${intro.offsetHeight}px`,
+            );
+        }
+        flushSync(() => setRail(next));
+
+        const box1 = document.querySelector<HTMLElement>("aside[data-filters]");
+        const b1 = box1?.getBoundingClientRect() ?? b0;
+        const r1 = results.getBoundingClientRect();
+
+        const from = {
+            left: `${b0.left}px`,
+            top: `${b0.top}px`,
+            width: `${b0.width}px`,
+            height: `${b0.height}px`,
+        };
+        const to = {
+            left: `${b1.left}px`,
+            top: `${b1.top}px`,
+            width: `${b1.width}px`,
+            height: `${b1.height}px`,
+        };
+        ghost.animate([from, to], {
+            duration: DUR,
+            easing: EASE,
+            fill: "forwards",
+        });
+        [...ghost.children].forEach((child) =>
+            (child as HTMLElement).animate([{ opacity: 1 }, { opacity: 0 }], {
+                duration: DUR * 0.5,
+                easing: "ease",
+                fill: "forwards",
+            }),
+        );
+        box1?.animate(
+            [{ opacity: 0 }, { opacity: 0, offset: 0.75 }, { opacity: 1 }],
+            {
+                duration: DUR + 150,
+                easing: "ease",
+            },
+        );
+
+        // The results: move and widen together
+        results.animate(
+            [
+                {
+                    transform: `translateX(${r0.left - r1.left}px)`,
+                    width: `${r0.width}px`,
+                },
+                { transform: "none", width: `${r1.width}px` },
+            ],
+            { duration: DUR, easing: EASE },
+        );
+
+        // Opening: the heading fades in after the results have moved
+        if (!next && intro) {
+            intro.animate(
+                [{ opacity: 0 }, { opacity: 0, offset: 0.6 }, { opacity: 1 }],
+                { duration: DUR + 250 },
+            );
+        }
+
+        window.setTimeout(() => {
+            ghost.remove();
+            document.body.classList.remove("rail-anim");
+        }, DUR + 20);
+    }
+
+    function openRail(target: number) {
+        railTo(false);
         setStepRequest((prev) => ({
             step: target,
             count: (prev?.count ?? 0) + 1,
@@ -194,7 +404,15 @@ export default function FireFinder(props: FireFinderProps) {
     ];
 
     return (
-        <div className={styles.wrapper}>
+        <div
+            className={[
+                styles.wrapper,
+                rail && styles.rail,
+                phone && !phoneDone && styles.firstPass,
+            ]
+                .filter(Boolean)
+                .join(" ")}
+        >
             <SideBar
                 questionCategories={questionCategories}
                 updateLocationData={updateLocationData}
@@ -216,7 +434,26 @@ export default function FireFinder(props: FireFinderProps) {
                 firesAtStep={firesAt}
                 onStepChange={onStepChange}
                 stepRequest={stepRequest}
-                todoSteps={hint ?? []}
+                todoSteps={[]}
+                remindCount={remindCount}
+                closeCount={result.close.length}
+                rail={rail}
+                onOpenRail={openRail}
+                onSeeFires={() => {
+                    if (phone) {
+                        // Phones: the first pass is over. The filter becomes the pinned bar, and the fires appear
+                        setPhoneDone(true);
+                        setSheetOpen(false);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else {
+                        railTo(true); // tablet and desktop: the filter collapses, and the results get wider
+                    }
+                }}
+                phoneDone={phone && phoneDone}
+                sheetOpen={sheetOpen}
+                onOpenSheet={() => setSheetOpen(true)}
+                onCloseSheet={() => setSheetOpen(false)}
+                barNote={barNote}
                 fuels={[
                     ...new Set(
                         [...result.best, ...result.close, ...result.more].map(
@@ -233,24 +470,21 @@ export default function FireFinder(props: FireFinderProps) {
                 result={result}
                 location={locationData}
                 m2ToHeat={m2ToHeat}
-                showFires={showFires}
+                showFires={showFires && (!phone || phoneDone)}
                 firesAt={{
                     step: firesAt,
                     title: stepTitles[firesAt - 1] ?? "",
                 }}
                 brand={props.brand}
-                onBeforeOpen={maybeShowHint}
+                onBeforeOpen={maybeRemind}
+                closeProduct={closeProduct}
             />
 
-            {hint && (
-                <HintToast
-                    steps={hint.map((s) => ({
-                        step: s,
-                        title: stepTitles[s - 1],
-                    }))}
-                    currentStep={step}
-                    onGo={goToStep}
-                    onClose={() => setHint(null)}
+            {reminder && (
+                <Reminder
+                    steps={reminder}
+                    onClick={openFirstMissing}
+                    onDone={() => setReminder(null)}
                 />
             )}
         </div>

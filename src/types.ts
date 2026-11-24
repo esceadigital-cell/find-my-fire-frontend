@@ -62,7 +62,7 @@ export type ChosenOption = {
 
 export type PropertyAnswer = {
     productProperty: string | null; // e.g. "fuelType"
-    isPreference: boolean;
+    isHardFiltering: boolean; // true: a fire that doesn't match is removed. False: it moves down
     /** One entry per chosen option: several with allowMultipleAnswers, otherwise one (empty: not answered) */
     chosen: ChosenOption[];
 };
@@ -181,6 +181,7 @@ export type PropertyQuestion = {
     dependsOn?: { documentId: string } | null;
     followUps?: PropertyQuestion[];
     allowMultipleAnswers: boolean | null; // several options can be chosen
+    isHardFiltering: boolean | null; // on: fires that don't match are removed. Off: they move to "You might love these too"
     extraDescription: string | null; // shown next to the question's label
 };
 
@@ -190,7 +191,7 @@ export type QuestionCategory = {
     documentId: string;
     name: string;
     order: number | null;
-    isPreferenceCategory: boolean | null;
+    isOptionalCategory: boolean | null; // the user can move on without answering every question
     heatingQuestions: HeatingQuestion[];
     propertyQuestions: PropertyQuestion[];
 };

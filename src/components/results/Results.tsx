@@ -5,7 +5,7 @@ import styles from "./Results.module.scss";
 import { FilterResult, Match } from "@/lib/filterFires";
 import { Brand, LocationData, Product, ProductLink } from "@/types";
 import { LINKS } from "@/lib/links";
-import ProductSlider from "../productSlider/ProductSlider";
+import ResultGrid from "../resultGrid/ResultGrid";
 import NeedsSummary from "../needsSummary/NeedsSummary";
 import Skeleton from "../skeleton/Skeleton";
 import NextSteps from "../nextSteps/NextSteps";
@@ -24,8 +24,10 @@ interface ResultsProps {
     firesAt: { step: number; title: string };
     /** the brand on a brand's own page; its links are used, and "Find a retailer" goes to its site */
     brand?: Brand;
-    /** called before a fire opens or is ticked; returns true if it showed the hint instead */
-    onBeforeOpen: () => boolean;
+    /** called when a fire is opened or ticked: may show the reminder (it never blocks the click) */
+    onBeforeOpen: (what: "open" | "compare") => void;
+    /** goes up when the product pop-up should close (the reminder was clicked) */
+    closeProduct: number;
 }
 
 const MAX_COMPARE = 3;
@@ -62,6 +64,16 @@ export default function Results(props: ResultsProps) {
         product: Product;
         links: ProductLink[];
     } | null>(null);
+
+    // Phones get the sliders (until the phone layout comes in part 4); tablet and desktop get grids
+    const [phone, setPhone] = useState(false);
+    useEffect(() => {
+        const query = window.matchMedia("(max-width: 699px)");
+        const update = () => setPhone(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, []);
 
     // ---------- The first load ----------
 
@@ -116,11 +128,18 @@ export default function Results(props: ResultsProps) {
     useEffect(() => {
         const intro = document.querySelector<HTMLElement>("[data-intro]");
         if (!intro) return;
-        const update = () =>
+        const update = () => {
+            // Frozen while the filter is collapsed (and while it animates), so nothing moves up or down
+            if (
+                document.body.classList.contains("rail") ||
+                document.body.classList.contains("rail-anim")
+            )
+                return;
             document.documentElement.style.setProperty(
                 "--intro-h",
                 `${intro.offsetHeight}px`,
             );
+        };
         const observer = new ResizeObserver(update);
         observer.observe(intro);
         return () => observer.disconnect();
@@ -138,7 +157,7 @@ export default function Results(props: ResultsProps) {
         .filter((m): m is Match => !!m);
 
     function toggleCompare(id: string, checked: boolean) {
-        props.onBeforeOpen(); // may show the hint, but the tick still counts
+        props.onBeforeOpen("compare"); // may show the reminder
         if (!checked) {
             setCompareIds(compareIds.filter((x) => x !== id));
             setCompareMessage("");
@@ -170,12 +189,17 @@ export default function Results(props: ResultsProps) {
         document.body.classList.toggle("has-cmp", compared.length > 0);
     }, [compared.length]);
 
+    // The reminder was clicked: the pop-up makes way for the filter
+    useEffect(() => {
+        if (props.closeProduct) setLinksFor(null);
+    }, [props.closeProduct]);
+
     // ---------- Clicking a fire ----------
     // Which links: on a brand's page (e.g. /stoke) that brand's, otherwise the fire's own brand's.
     // One link opens straight away; several (configurations or versions) open the pop-up.
 
     function openProduct(product: Product) {
-        if (props.onBeforeOpen()) return; // the hint took this click
+        props.onBeforeOpen("open"); // may show the reminder; the pop-up opens either way
 
         const links = product.productLinks ?? [];
         const own = product.manufacturer?.slug;
@@ -188,9 +212,8 @@ export default function Results(props: ResultsProps) {
         // No manufacturer set: use whatever links there are
         if (!options.length) options = links;
 
-        if (options.length === 1)
-            window.open(options[0].url, "_blank", "noopener");
-        else if (options.length > 1) setLinksFor({ product, links: options });
+        // Always the pop-up: one button for one link, a button per version for several
+        setLinksFor({ product, links: options });
     }
 
     // ---------- What to show ----------
@@ -215,38 +238,50 @@ export default function Results(props: ResultsProps) {
     } else if (loading) {
         content = <Skeleton />;
     } else {
+        const kw = props.result.kwNeeded || null; // 0 (just for looks): no heat need to compare with
+        const closeText = `Up to 1.1 kW under the ${props.result.kwNeeded} kW you need. Enough if the room has other heating, or rarely gets very cold.`;
+        const moreText =
+            "They suit your room and the rules, but not all of your preferences.";
+        const shared = {
+            onOpenProduct: openProduct,
+            compareIds,
+            onToggleCompare: toggleCompare,
+        };
         content = (
             <>
-                <ProductSlider
-                    matches={props.result.best}
-                    kwNeeded={props.result.kwNeeded || null}
-                    title="Best for your home"
-                    onOpenProduct={openProduct}
-                    compareIds={compareIds}
-                    onToggleCompare={toggleCompare}
-                    emptyText="No fire meets every requirement yet. Try a different answer in one of the steps."
-                />
-                {props.result.close.length > 0 && (
-                    <ProductSlider
-                        matches={props.result.close}
-                        kwNeeded={props.result.kwNeeded || null}
-                        title="Close to your heat requirement"
-                        variant="close"
-                        onOpenProduct={openProduct}
-                        compareIds={compareIds}
-                        onToggleCompare={toggleCompare}
+                <>
+                    <ResultGrid
+                        phone={phone}
+                        matches={props.result.best}
+                        kind="top"
+                        title="Best for your home"
+                        kwNeeded={kw}
+                        emptyText="No fire meets every requirement yet. Try a different answer in one of the steps."
+                        {...shared}
                     />
-                )}
-                {props.result.more.length > 0 && (
-                    <ProductSlider
-                        matches={props.result.more}
-                        title="You might love these too"
-                        variant="more"
-                        onOpenProduct={openProduct}
-                        compareIds={compareIds}
-                        onToggleCompare={toggleCompare}
-                    />
-                )}
+                    {props.result.close.length > 0 && (
+                        <ResultGrid
+                            phone={phone}
+                            matches={props.result.close}
+                            kind="close"
+                            title="Close to your heat requirement"
+                            explanation={closeText}
+                            kwNeeded={kw}
+                            {...shared}
+                        />
+                    )}
+                    {props.result.more.length > 0 && (
+                        <ResultGrid
+                            phone={phone}
+                            matches={props.result.more}
+                            kind="more"
+                            title="You might love these too"
+                            explanation={moreText}
+                            kwNeeded={kw}
+                            {...shared}
+                        />
+                    )}
+                </>
                 <NextSteps
                     postcode={props.location?.postcode ?? null}
                     retailerUrl={props.brand?.url}
@@ -273,7 +308,7 @@ export default function Results(props: ResultsProps) {
                     result={props.result}
                     location={props.location}
                     m2ToHeat={props.m2ToHeat}
-                    showFunnel={ready && !loading}
+                    showing={ready && !loading}
                     compact={needsCompact}
                     onToggleCompact={() => setNeedsCompact(!needsCompact)}
                     onOpenRule={() => setRuleOpen(true)}
@@ -316,6 +351,7 @@ export default function Results(props: ResultsProps) {
                 <ProductLinksDialog
                     product={linksFor.product}
                     links={linksFor.links}
+                    kwNeeded={props.result.kwNeeded || null}
                     onClose={() => setLinksFor(null)}
                 />
             )}

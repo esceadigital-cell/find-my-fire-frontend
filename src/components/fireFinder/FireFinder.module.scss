@@ -30,3 +30,27 @@
         grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
     }
 }
+
+
+// ---------- The collapsed filter (tablet and desktop) ----------
+// The filter column narrows to 180px and the results get the room. FireFinder animates the change.
+@include tablet-up {
+    .rail {
+        grid-template-columns: 180px minmax(0, 1fr);
+    }
+}
+
+@include desktop {
+    .rail {
+        grid-template-columns: 180px minmax(0, 1fr);
+    }
+}
+
+
+
+// Phones, first pass: the results stay hidden until "See your N fires"
+@include phone {
+    .firstPass > section[aria-label="Recommended fires"] {
+        display: none;
+    }
+}

@@ -75,10 +75,6 @@
     @include icon-button;
 }
 
-.dark {
-    @include icon-button-dark;
-}
-
 // ---------- Progress: one bar per step ----------
 
 .progress {
@@ -186,13 +182,6 @@
     }
 }
 
-// Width and depth side by side
-.row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
 .hint {
     font-size: 13px;
     color: $muted;
@@ -236,13 +225,6 @@
 // Required answers, and messages
 // =====================================================================
 
-// "Add your postcode … to continue."
-.required {
-    margin: 2px 0 10px;
-    font-size: 13px;
-    color: $error;
-}
-
 // Orange message where something needs doing: "Choose a country first", "Add your address to be sure"
 .warn {
     font-size: 13px;
@@ -259,245 +241,6 @@
     border-color: $accent;
 }
 
-// While the hint is open, the steps it mentions pulse orange
-.progress button[data-todo] span {
-    animation: todoPulse 1.2s ease-in-out 4 alternate;
-}
-
-@keyframes todoPulse {
-    from {
-        background: rgba(20, 20, 20, 0.18);
-    }
-    to {
-        background: $accent;
-    }
-}
-
-// =====================================================================
-// Phones: fold away, minibar, floating
-// =====================================================================
-
-// While the minibar covers the box, only the minibar has a shadow
-@include phone {
-    .box[data-under-bar] {
-        box-shadow: none;
-    }
-}
-
-// Opened from the minibar, the box floats at the top of the screen
-@include phone {
-    .floating {
-        position: fixed;
-        top: 0;
-        left: max(12px, env(safe-area-inset-left, 0px));
-        right: max(12px, env(safe-area-inset-right, 0px));
-        margin: 0;
-        padding-top: env(safe-area-inset-top, 0px);
-        z-index: 26;
-        max-height: 82vh;
-        max-height: 82dvh;
-        border-radius: 0 0 $radius $radius;
-        box-shadow:
-            0 1px 0 $line,
-            0 10px 28px rgba(20, 20, 20, 0.2);
-
-        .body {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-            overscroll-behavior: contain;
-        }
-    }
-
-    // Folded into one line
-    .collapsed {
-        .head,
-        .progress,
-        .body,
-        .foot {
-            display: none;
-        }
-        .mini {
-            display: flex;
-        }
-    }
-}
-
-// A borderless icon button (the fold button)
-.ghost {
-    border: 0;
-    background: transparent;
-}
-
-// The fold button only shows on phones
-.ib.collapse {
-    display: none;
-
-    @include phone {
-        display: inline-flex;
-    }
-}
-
-// ---------- The one-line summary (phones) ----------
-
-.mini {
-    display: none;
-
-    @include phone {
-        position: relative;
-        width: 100%;
-        height: 72px;
-        padding: 0 64px 0 18px;
-        border: 0;
-        background: transparent;
-        align-items: center;
-        gap: 10px;
-        text-align: left;
-        overflow: hidden;
-
-        > svg {
-            flex: none;
-        }
-    }
-}
-
-.miniText {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-}
-
-.miniTitle {
-    font-size: 15px;
-    color: $ink;
-    line-height: 1.25;
-}
-
-.miniSub {
-    font-size: 12px;
-    line-height: 1.3;
-    color: $muted;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    white-space: nowrap;
-}
-
-.ftags {
-    display: inline-flex;
-    gap: 3px;
-}
-
-.ftag {
-    @include fuel-tag;
-    gap: 4px;
-    padding: 2px 5px;
-    font-size: 9.5px;
-}
-
-.fdot {
-    @include fuel-dot;
-    @include fuel-dot-colours;
-}
-
-// The round + / − in the corner
-.chevBox {
-    position: absolute;
-    top: calc(50% - 20px);
-    right: 14px;
-    width: 40px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.chev {
-    display: inline-flex;
-    width: 24px;
-    height: 24px;
-    background: rgba(20, 20, 20, 0.09);
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-}
-
-.pm {
-    width: 12px;
-    height: 12px;
-}
-
-.pv {
-    transform-origin: 12px 12px;
-    transform-box: view-box;
-}
-
-// Open: the vertical line is hidden, so the plus is a minus
-.open .pv {
-    transform: scaleY(0);
-}
-
-// ---------- Minibar (phones) ----------
-
-.minibar {
-    display: none;
-
-    @include phone {
-        display: block;
-        position: fixed;
-        left: 0;
-        right: 0;
-        top: 0;
-        z-index: 25;
-        padding: env(safe-area-inset-top, 0px)
-            max(12px, env(safe-area-inset-right, 0px)) 0
-            max(12px, env(safe-area-inset-left, 0px));
-        transform: translateY(-120%);
-        transition: transform 0.65s $ease;
-        pointer-events: none;
-
-        &[data-show] {
-            transform: none;
-            pointer-events: auto;
-        }
-
-        .mini {
-            display: flex;
-            background: $panel;
-            border-radius: 0 0 $radius $radius;
-            box-shadow:
-                0 1px 0 $line,
-                0 6px 16px rgba(20, 20, 20, 0.16);
-        }
-    }
-}
-
-// "All of it · the fire is the main heat source"
-.shareValue {
-    font-size: 13px;
-    color: $muted;
-}
-
-// The slider, in steps of 10 %
-.slider {
-    width: 100%;
-    height: 28px;
-    margin: 4px 0 0;
-    accent-color: $ink;
-    cursor: pointer;
-}
-
-// "For looks" under the left end, "All the heat" under the right
-.sliderEnds {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: $muted;
-}
-
 // A follow-up question sits in a light box under the question it depends on
 .followUp {
     margin-top: 6px;
@@ -505,4 +248,544 @@
     background: $bg;
     border-radius: $radius;
     gap: 8px;
+}
+
+// =====================================================================
+// Step 2: "What should heat your room?", two linked bars (from the mockup)
+// =====================================================================
+// Each bar is the browser's own range slider, styled, so touch, keyboard and screen readers work as normal.
+// --w is the bar's value (0–100), set on its track.
+
+.bars {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 4px 16px;
+    align-items: center;
+    margin-top: 2px;
+}
+
+// Each row's label and track go straight into the grid's two columns
+.barRow {
+    display: contents;
+}
+
+.barLabel {
+    font-size: 13px;
+    font-weight: 400;
+    color: $ink;
+}
+
+.barTrack {
+    position: relative;
+    height: 22px;
+
+    // The white line, ending 44px before the edge to leave room for the %
+    &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 44px;
+        top: 50%;
+        height: 4px;
+        margin-top: -2px;
+        border-radius: 4px;
+        background: $field;
+    }
+}
+
+// The filled part: black for the fireplace, grey for other heat sources. A 4px sliver shows at 0%
+.barFill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    border-radius: 4px;
+    width: calc(4px + (100% - 64px) * var(--w) / 100);
+    background: $ink;
+    pointer-events: none;
+
+    [data-bar="other"] & {
+        background: #a9a6a2;
+    }
+}
+
+// The slider itself: invisible track, 16px black thumb with a ring in the panel's colour
+.barInput {
+    -webkit-appearance: none;
+    appearance: none;
+    position: absolute;
+    left: 4px;
+    top: 0;
+    width: calc(100% - 48px);
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: pan-y;
+
+    &::-webkit-slider-runnable-track {
+        height: 22px;
+        background: transparent;
+        border: 0;
+    }
+    &::-moz-range-track {
+        height: 22px;
+        background: transparent;
+        border: 0;
+    }
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        border: 0;
+        border-radius: 50%;
+        background: #000;
+        box-shadow: 0 0 0 3px $panel;
+        transition: transform 0.15s ease;
+    }
+    &::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border: 0;
+        border-radius: 50%;
+        background: #000;
+        box-shadow: 0 0 0 3px $panel;
+        transition: transform 0.15s ease;
+    }
+    &:hover::-webkit-slider-thumb {
+        transform: scale(1.15);
+    }
+    &:hover::-moz-range-thumb {
+        transform: scale(1.15);
+    }
+
+    // Keyboard focus: an orange ring around the thumb
+    :global(html.kb) &:focus-visible {
+        outline: none;
+    }
+    :global(html.kb) &:focus-visible::-webkit-slider-thumb {
+        box-shadow:
+            0 0 0 3px $panel,
+            0 0 0 5px $accent;
+    }
+    :global(html.kb) &:focus-visible::-moz-range-thumb {
+        box-shadow:
+            0 0 0 3px $panel,
+            0 0 0 5px $accent;
+    }
+}
+
+// The %, fixed just after the end of the line (it doesn't follow the thumb)
+.barValue {
+    position: absolute;
+    top: 0;
+    left: calc(100% - 36px);
+    line-height: 22px;
+    font-size: 13px;
+    font-weight: 500;
+    color: $ink;
+    pointer-events: none;
+
+    [data-bar="other"] & {
+        color: $muted;
+    }
+}
+
+// "The fireplace has to deliver 50% of the heating."
+.shareHelp {
+    margin-top: 6px;
+}
+
+// =====================================================================
+// Required and skipped questions
+// =====================================================================
+
+// The asterisk after a required question's label: black, orange once it's been skipped
+.ast {
+    margin-left: 2px;
+    color: $ink;
+    font-weight: 500;
+}
+
+.missAst {
+    color: $accent;
+}
+
+// "* Required", at the top of a step when a required question was left empty
+.reqMsg {
+    margin: 2px 0 10px;
+    font-size: 12px;
+    color: $muted;
+
+    .ast {
+        margin: 0;
+    }
+}
+
+// "3 missing answers in this step", at the top of a marked optional step
+.sl {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: $accent;
+}
+
+// Marked steps pulse one after the other (--k is their order); the current one fades in its orange
+.progress button[data-soft] span {
+    animation: softPulse 1.8s ease-in-out calc(var(--k, 0) * 0.35s) infinite
+        both;
+}
+
+.progress button.now[data-soft] span {
+    animation-name: nowPulse;
+}
+
+@keyframes softPulse {
+    0%,
+    50%,
+    100% {
+        background: rgba(20, 20, 20, 0.18);
+    }
+    22% {
+        background: rgba(20, 20, 20, 0.55);
+    }
+}
+
+@keyframes nowPulse {
+    0%,
+    50%,
+    100% {
+        opacity: 1;
+    }
+    22% {
+        opacity: 0.45;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .progress button[data-soft] span {
+        animation: none;
+    }
+}
+
+// =====================================================================
+// Back / Next
+// =====================================================================
+
+.fnav {
+    display: flex;
+    gap: 8px;
+    padding: 12px 24px 16px;
+    background: $panel;
+    border-top: 1px solid $line;
+    flex: none;
+
+    // Phones: stays at the bottom of the screen while the steps scroll
+    @include phone {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        padding: 12px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.fnBack,
+.fnNext {
+    min-height: 38px;
+    border: 1px solid rgba(20, 20, 20, 0.2);
+    border-radius: $radius;
+    background: transparent;
+    color: $ink;
+    font: inherit;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.fnBack {
+    flex: none;
+    width: 38px;
+    padding: 0;
+}
+
+// "Next: The room →": outlined until the step is complete, then it fills black from left to right.
+// The fill and a white copy of the text are revealed together, so the text is never black on black.
+.fnNext {
+    flex: 1;
+    min-width: 0;
+    padding: 0 14px;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition: border-color 0.45s ease;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: $ink;
+        clip-path: inset(0 100% 0 0);
+        transition: clip-path 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+}
+
+.fnLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    > span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+// The white copy: on top of the black text, cut away from the right until the button fills
+.fnWipe {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    color: $bg;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
+}
+
+.filled {
+    border-color: $ink;
+
+    &::before,
+    .fnWipe {
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fnNext,
+    .fnNext::before,
+    .fnWipe {
+        transition: none;
+    }
+}
+
+// =====================================================================
+// Collapsed (tablet and desktop): the filter icon, then the numbered steps
+// =====================================================================
+
+.railBox {
+    height: auto;
+    align-self: start;
+    padding: 12px;
+    cursor: pointer; // the whole box opens the filter
+    animation: railIn 0.35s ease both;
+}
+
+@keyframes railIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.railOpen {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $ink;
+    cursor: pointer;
+}
+
+.railSteps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    // A line above every step, including the first (between the filter icon and step 1)
+    li {
+        border-top: 1px solid rgba(20, 20, 20, 0.22);
+    }
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 44px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: $ink;
+        font: inherit;
+        font-size: 14px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover span:last-child {
+            text-decoration: underline;
+        }
+    }
+}
+
+.railNum {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    border: 1px solid rgba(20, 20, 20, 0.3);
+    border-radius: 50%;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+// =====================================================================
+// Phones: the pinned bar and the full-screen sheet
+// =====================================================================
+
+// The bar's button only exists while pinned, and only shows on phones
+.bar {
+    display: none;
+}
+
+@include phone {
+    // Pinned: the box becomes a 56px bar across the top of the screen, shadow only
+    .pinned {
+        position: sticky;
+        top: 0;
+        z-index: 45; // above the product pop-up's dimmed background
+        margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+        margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+        padding-top: env(safe-area-inset-top, 0px);
+        border-radius: 0;
+        box-shadow: 0 4px 14px rgba(20, 20, 20, 0.14);
+
+        .head,
+        .progress,
+        .body,
+        .fnav,
+        .foot {
+            display: none;
+        }
+
+        .bar {
+            display: flex;
+        }
+    }
+
+    .bar {
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 56px;
+        padding: 8px 18px;
+        border: 0;
+        background: transparent;
+        color: $ink;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .barText {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .barTitle {
+        font-size: 16px;
+    }
+
+    // "Answer steps 3 and 4 for better recommendations", under the title after the reminder
+    .barNote {
+        font-size: 12px;
+        color: $muted;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .barChev {
+        display: inline-flex;
+        transition: transform 0.3s ease;
+    }
+
+    // The sheet: the whole screen, its steps scroll inside, Back/Next stays at the bottom
+    .sheet {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        margin: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        animation: sheetIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+        .body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .fnav {
+            position: static;
+        }
+    }
+
+    // The sheet's close button: the bar's chevron, turned up
+    .sheetClose {
+        margin-left: auto;
+
+        svg {
+            transform: rotate(180deg);
+        }
+    }
+}
+
+// Elsewhere the close button never shows
+@include tablet-up {
+    .sheetClose {
+        display: none;
+    }
+}
+
+@keyframes sheetIn {
+    from {
+        transform: translateY(24px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet {
+        animation: none;
+    }
 }

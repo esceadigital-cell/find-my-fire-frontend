@@ -1,34 +1,25 @@
 import styles from "./NeedsSummary.module.scss";
 import { FilterResult } from "@/lib/filterFires";
 import { LocationData } from "@/types";
-import { FUEL_NAMES } from "@/lib/display";
 import Icon, { RuleIcon } from "../icon/Icon";
 
 interface NeedsSummaryProps {
     result: FilterResult;
     location: LocationData | null;
     m2ToHeat: number | null;
-    /** the fires are showing and have loaded: the funnel goes with them */
-    showFunnel: boolean;
+    /** show the "Showing 8 best matches · …" line (once the fires show) */
+    showing: boolean;
     /** smaller version, so the results get more room (tablet and desktop) */
     compact: boolean;
     onToggleCompact: () => void;
     onOpenRule: () => void;
 }
 
-const FUELS = ["gas", "wood", "electric"] as const;
-
 /** "What your home needs": the strip with the heat need, the local rule and the funnel. */
 export default function NeedsSummary(props: NeedsSummaryProps) {
     const location = props.location;
     const kw = props.result.kwNeeded;
     const ready = kw !== null;
-
-    // Fuels that are still possible (all three until there are results)
-    const possible = [...props.result.best, ...props.result.more];
-    const fuels = ready
-        ? FUELS.filter((f) => possible.some((m) => m.product.fuelType === f))
-        : FUELS;
 
     // The rules that apply at the address: the air shed's if it's in one, otherwise the region's
     const ruleName =
@@ -49,38 +40,12 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
                     ? `${styles.needs} ${styles.compact}`
                     : styles.needs
             }
+            // Compact: clicking it shows it in full again
+            onClick={props.compact ? props.onToggleCompact : undefined}
         >
             <div className={styles.head}>
                 <h2 className={styles.eyebrow}>What your home needs</h2>
             </div>
-
-            <button
-                type="button"
-                className={styles.toggle}
-                aria-label={
-                    props.compact
-                        ? "Show what your home needs in full"
-                        : "Minimise what your home needs"
-                }
-                aria-expanded={!props.compact}
-                onClick={props.onToggleCompact}
-            >
-                <span>{props.compact ? "Expand" : "Collapse"}</span>
-                <svg
-                    className={styles.toggleChevron}
-                    aria-hidden="true"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <path d="M6 9l6 6 6-6" />
-                </svg>
-            </button>
 
             <div className={styles.strip}>
                 <div className={styles.heat}>
@@ -114,17 +79,6 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
                         {location?.region ?? "–"}
                     </span>
                 </div>
-                <div>
-                    <span className={styles.key}>Fuel</span>
-                    <span className={styles.ftags}>
-                        {fuels.map((f) => (
-                            <span key={f} className={styles.ftag}>
-                                <i className={`${styles.fdot} ${styles[f]}`} />
-                                {FUEL_NAMES[f]}
-                            </span>
-                        ))}
-                    </span>
-                </div>
             </div>
 
             {ruleName && (
@@ -141,6 +95,31 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
                         >
                             Read the rule
                         </a>
+                    </span>
+                </p>
+            )}
+
+            {/* "SHOWING 8 best matches · 12 close on heat · 4 worth a look" (parts with 0 are left out) */}
+            {props.showing && (
+                <p className={styles.showing}>
+                    <span className={styles.showingKey}>Showing</span>
+                    <span className={styles.showingValue}>
+                        <span>
+                            {props.result.best.length} best match
+                            {props.result.best.length === 1 ? "" : "es"}
+                        </span>
+                        {props.result.close.length > 0 && (
+                            <span>
+                                {" "}
+                                · {props.result.close.length} close on heat
+                            </span>
+                        )}
+                        {props.result.more.length > 0 && (
+                            <span>
+                                {" "}
+                                · {props.result.more.length} worth a look
+                            </span>
+                        )}
                     </span>
                 </p>
             )}

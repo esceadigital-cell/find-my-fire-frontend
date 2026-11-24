@@ -9,12 +9,13 @@ import {
     QuestionCategory,
 } from "@/types";
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import LocationMap from "../locationMap/LocationMap";
 import QuestionCategoryStep from "../questionCategoryStep/QuestionCategoryStep";
-import Icon, { PlusMinus } from "../icon/Icon";
+import Icon from "../icon/Icon";
 import { FUEL_NAMES } from "@/lib/display";
-import { isRequiredStep, missingInStep } from "@/lib/progress";
+import { isRequiredStep, missingInStep, unansweredIn } from "@/lib/progress";
+import Tip from "../tip/Tip";
+import { TIPS, shareHelp } from "@/lib/tips";
 
 interface SideBarProps {
     questionCategories: QuestionCategory[];
@@ -51,6 +52,25 @@ interface SideBarProps {
     setHeatShare: (share: number) => void;
     /** the heating questions asked in step 2, when the fire is to heat the room */
     heatDemandQuestions: HeatingQuestion[];
+    /** how many fires are close on heat, for the footer */
+    closeCount: number;
+    /** "See your N fires" on the last step */
+    onSeeFires: () => void;
+    /** collapsed into a narrow column (tablet and desktop, after "See your N fires") */
+    rail: boolean;
+    /** open the filter again, on this step */
+    onOpenRail: (step: number) => void;
+    /** goes up each time the reminder shows: every unfinished step is marked */
+    remindCount: number;
+    // ---- Phones ----
+    /** the first pass is over ("See your N fires" was pressed): the filter is a pinned bar, or an open sheet */
+    phoneDone: boolean;
+    /** the filter is open as a full-screen sheet */
+    sheetOpen: boolean;
+    onOpenSheet: () => void;
+    onCloseSheet: () => void;
+    /** a small line in the bar after the reminder, e.g. "Answer steps 3 and 4 for better recommendations" */
+    barNote: string | null;
 }
 
 export default function SideBar(props: SideBarProps) {
@@ -211,6 +231,28 @@ export default function SideBar(props: SideBarProps) {
     const needs = (key: string) => nudgeMissing.includes(key);
     const box = useRef<HTMLElement>(null);
 
+    // ---------- Skipped questions ----------
+    // A step is "done" when every question in it is answered, optional ones too.
+    // Moving forward past a step with unanswered questions marks it (flagged): its line in the step bar pulses,
+    // and its skipped questions get a thin orange line. Going back never marks anything.
+    // The pulsing only starts after the first pass: once the user has pressed "See your fires".
+
+    const [flagged, setFlagged] = useState<number[]>([]);
+    const [firstPass, setFirstPass] = useState(true);
+
+    /** The unanswered questions in a step: what's missing in steps 1 and 2, every unanswered question in a category */
+    function unanswered(step: number) {
+        if (step <= 2) return missingInStep(step, progress);
+        const category = props.questionCategories[step - 3];
+        return category ? unansweredIn(category, progress) : [];
+    }
+    const stepDone = (step: number) => unanswered(step).length === 0;
+
+    function flag(step: number) {
+        if (!stepDone(step) && !flagged.includes(step))
+            setFlagged((prev) => [...prev, step]);
+    }
+
     /** Go to a step, unless an earlier required step is missing answers: then stop there and show what's missing */
     function goTo(target: number) {
         for (let step = 1; step < target; step++) {
@@ -220,8 +262,41 @@ export default function SideBar(props: SideBarProps) {
                 return;
             }
         }
+        if (target > stepIndex) flag(stepIndex); // moving forward past unanswered questions marks the step
         setStepIndex(target);
     }
+
+    /** "See your N fires" on the last step: like moving past it, then show the fires */
+    function seeFires() {
+        for (let step = 1; step <= totalSteps; step++) {
+            if (missing(step).length) {
+                setStepIndex(step);
+                setNudge((prev) => ({ step, count: (prev?.count ?? 0) + 1 }));
+                return;
+            }
+        }
+        flag(stepIndex);
+        setFirstPass(false);
+        props.onSeeFires();
+    }
+
+    // The reminder marks every unfinished step, and ends the first pass (so the marked steps pulse)
+    useEffect(() => {
+        if (!props.remindCount) return;
+        const total = props.questionCategories.length + 2;
+        const unfinished = Array.from(
+            { length: total },
+            (_, i) => i + 1,
+        ).filter((st) => !stepDone(st));
+        setFlagged((prev) => [...new Set([...prev, ...unfinished])]);
+        setFirstPass(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props.remindCount]);
+
+    // The skipped questions shown on the current step, once it's marked
+    const skippedHere = flagged.includes(stepIndex)
+        ? unanswered(stepIndex)
+        : [];
 
     // Shake what's missing, and the Next button, each time the user is stopped
     useEffect(() => {
@@ -248,303 +323,93 @@ export default function SideBar(props: SideBarProps) {
     const onStepChange = props.onStepChange;
     useEffect(() => onStepChange(stepIndex), [stepIndex, onStepChange]);
 
-    // Open a step when asked from outside (the hint's "Go to step").
-    // On phones, unfold the box, and float it at the top if it's out of view.
+    // Open a step when asked from outside (the reminder, or a step in the collapsed filter)
     useEffect(() => {
-        if (!props.stepRequest) return;
-        goTo(props.stepRequest.step);
-        if (isPhone()) {
-            if (live.current.collapsed) {
-                flushSync(() => setCollapsed(false));
-                live.current.collapsed = false;
-            }
-            const r = box.current?.getBoundingClientRect();
-            if (r && (r.bottom < 60 || r.top > window.innerHeight)) undock();
-        }
+        if (props.stepRequest) goTo(props.stepRequest.step);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.stepRequest]);
 
     // =====================================================================
-    // Phones: fold away, minibar, floating
+    // Phones
     // =====================================================================
-    // On phones the box scrolls with the page, and:
-    // - folds into one line once it's scrolled out of view and the page is at rest
-    // - a bar slides down from the top when the user scrolls back up (the "minibar")
-    // - tapping that bar opens the box as a floating panel at the top of the screen
+    // First pass: the filter is a card under the heading.
+    // After "See your N fires" it shrinks into a pinned "Find my fireplace" bar at the top of the screen,
+    // which opens the filter as a full-screen sheet (the page behind it doesn't scroll).
+    // On tablet and desktop none of this applies: the classes only have styles on phones.
 
-    const space = useRef<HTMLDivElement>(null); // keeps the box's place in the page while it floats
-    const minibar = useRef<HTMLDivElement>(null);
-    const [collapsed, setCollapsed] = useState(false);
-    const [floating, setFloating] = useState(false);
-
-    // Values the scroll handlers read and change without re-rendering
-    const live = useRef({
-        lastY: 0,
-        up: false,
-        busy: false,
-        holdUntil: 0,
-        timer: 0,
-        collapsed: false,
-        floating: false,
-    });
-    live.current.collapsed = collapsed;
-    live.current.floating = floating;
-
-    const isPhone = () => window.matchMedia("(max-width: 699px)").matches;
-    const reducedMotion = () =>
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const EASE = "cubic-bezier(.2,.8,.2,1)";
-
-    /** Folds the box into one line once it has scrolled out of view, keeping the page where it was */
-    function foldAway() {
-        const f = box.current;
-        const l = live.current;
-        if (
-            !f ||
-            !isPhone() ||
-            l.floating ||
-            l.collapsed ||
-            l.busy ||
-            f.getBoundingClientRect().bottom >= 0
-        )
-            return;
-        l.busy = true;
-        const h0 = f.offsetHeight;
-        const y0 = window.scrollY;
-        flushSync(() => setCollapsed(true));
-        l.collapsed = true;
-        const dh = h0 - f.offsetHeight;
-        window.scrollTo(0, y0 - dh); // the box got shorter: move the page up by as much, so nothing jumps
-        l.lastY = y0 - dh;
-        l.up = false;
-        l.holdUntil = performance.now() + 200;
-        l.busy = false;
-    }
-
-    /** Shows the minibar when scrolling up while the box is out of view */
-    function syncMinibar() {
-        const f = box.current;
-        const m = minibar.current;
-        const sp = space.current;
-        if (!f || !m || !sp) return;
-        const l = live.current;
-
-        // Which way is the page scrolling? (ignoring tiny movements)
-        const y = window.scrollY;
-        const dy = y - l.lastY;
-        if (performance.now() < l.holdUntil) l.lastY = y;
-        else {
-            if (dy < -4) l.up = true;
-            else if (dy > 4) l.up = false;
-            if (Math.abs(dy) > 4) l.lastY = y;
-        }
-
-        // Back at its place in the page: the floating box docks again
-        if (l.floating && (!isPhone() || sp.getBoundingClientRect().top >= 0))
-            dock();
-
-        // Fold the box once the page is at rest (correcting the scroll mid-swipe makes phones jump)
-        if (!l.busy) {
-            window.clearTimeout(l.timer);
-            l.timer = window.setTimeout(foldAway, 220);
-        }
-
-        const r = f.getBoundingClientRect();
-        const was = m.dataset.show === "true";
-        const show =
-            isPhone() &&
-            !l.floating &&
-            l.up &&
-            r.top < 0 &&
-            (was || r.bottom < 0);
-
-        // Handing over to the box at its own place: vanish at once instead of sliding up
-        if (was && !show && r.top >= 0) {
-            m.style.transition = "none";
-            delete m.dataset.show;
-            void m.offsetHeight;
-            m.style.transition = "";
-        }
-        if (show) m.dataset.show = "true";
-        else delete m.dataset.show;
-
-        f.toggleAttribute("data-under-bar", show); // only one shadow at a time
-        m.setAttribute("aria-hidden", String(!show));
-        const button = m.querySelector("button");
-        if (button) button.tabIndex = show ? 0 : -1;
-    }
-
-    /** Opens the box as a floating panel at the top of the screen */
-    function undock() {
-        const f = box.current;
-        const sp = space.current;
-        if (!f || !sp) return;
-        const l = live.current;
-
-        if (l.collapsed) {
-            const h0 = f.offsetHeight;
-            const y0 = window.scrollY;
-            l.busy = true;
-            flushSync(() => setCollapsed(false));
-            l.collapsed = false;
-            l.busy = false;
-            const dh = f.offsetHeight - h0;
-            window.scrollTo(0, y0 + dh);
-            l.lastY = y0 + dh;
-        }
-
-        // A placeholder keeps the box's place in the page while it floats
-        sp.style.height = f.offsetHeight + "px";
-        flushSync(() => setFloating(true));
-        l.floating = true;
-        if (minibar.current) delete minibar.current.dataset.show;
-
-        if (!reducedMotion()) {
-            f.animate(
-                [
-                    { transform: "translateY(-24px)", opacity: 0 },
-                    { transform: "none", opacity: 1 },
-                ],
-                {
-                    duration: 450,
-                    easing: EASE,
-                },
-            );
-        }
-    }
-
-    function dock() {
-        live.current.floating = false;
-        setFloating(false);
-        if (space.current) space.current.style.height = "";
-    }
-
-    /** The + / − button: folds or unfolds the box, turning the plus into a minus with a little spin */
-    function toggleCollapse() {
-        const nowClosed = !live.current.collapsed;
-        flushSync(() => setCollapsed(nowClosed));
-        live.current.collapsed = nowClosed;
-
-        const f = box.current;
-        const chev = f?.querySelector(
-            nowClosed
-                ? `.${styles.mini} .${styles.chev}`
-                : `.${styles.collapse} .${styles.chev}`,
-        );
-        if (chev && !reducedMotion()) {
-            const timing = { duration: 420, easing: EASE };
-            chev.animate(
-                nowClosed
-                    ? [
-                          { transform: "rotate(-90deg)" },
-                          { transform: "rotate(0deg)" },
-                      ]
-                    : [
-                          { transform: "rotate(90deg)" },
-                          { transform: "rotate(0deg)" },
-                      ],
-                timing,
-            );
-            chev.querySelector(`.${styles.pv}`)?.animate(
-                nowClosed
-                    ? [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }]
-                    : [{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }],
-                timing,
-            );
-        }
-        f?.querySelector<HTMLElement>(
-            nowClosed ? `.${styles.mini}` : `.${styles.collapse}`,
-        )?.focus({ preventScroll: true });
-    }
-
-    /** The fold button: while floating it closes the panel, otherwise it folds or unfolds the box */
-    function onCollapseClick() {
-        if (live.current.floating) {
-            dock();
-            live.current.up = true;
-            live.current.lastY = window.scrollY;
-            syncMinibar();
-            return;
-        }
-        toggleCollapse();
-    }
-
-    // Scroll listeners for the phone behaviour
-    useEffect(() => {
-        live.current.lastY = window.scrollY;
-        const onScroll = () => requestAnimationFrame(syncMinibar);
-        const onScrollEnd = () => {
-            window.clearTimeout(live.current.timer);
-            foldAway();
-        };
-        window.addEventListener("scroll", onScroll, { passive: true });
-        window.addEventListener("scrollend", onScrollEnd);
-        return () => {
-            window.removeEventListener("scroll", onScroll);
-            window.removeEventListener("scrollend", onScrollEnd);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Keep the minibar in step after every change
-    useEffect(() => {
-        syncMinibar();
-    });
-
-    // The one-line summary: in the folded box, and in the minibar
-    const area =
-        props.heatShare > 0 && props.m2ToHeat
-            ? Math.round(props.m2ToHeat * 10) / 10
-            : null;
-    const miniContent = (
-        <>
-            <Icon name="sliders" />
-            <span className={styles.miniText}>
-                <span className={styles.miniTitle}>
-                    Your home · step {stepIndex} of {totalSteps}
-                </span>
-                <span className={styles.miniSub}>
-                    {props.showingFires
-                        ? `${area} m² · ${props.bestCount} best, ${props.moreCount} more`
-                        : area
-                          ? `${area} m² · fires at step ${props.firesAtStep}`
-                          : "Add location and room"}
-                    <span className={styles.ftags}>
-                        {(props.fuels.length
-                            ? props.fuels
-                            : (["gas", "wood", "electric"] as const)
-                        ).map((f) => (
-                            <span key={f} className={styles.ftag}>
-                                <i className={`${styles.fdot} ${styles[f]}`} />
-                                {FUEL_NAMES[f]}
-                            </span>
-                        ))}
-                    </span>
-                </span>
-            </span>
-            <span className={styles.chevBox}>
-                <span className={styles.chev}>
-                    <PlusMinus
-                        className={styles.pm}
-                        verticalClassName={styles.pv}
-                    />
-                </span>
-            </span>
-        </>
-    );
-
+    const pinned = props.phoneDone && !props.sheetOpen;
     const boxClass = [
         styles.box,
-        collapsed && styles.collapsed,
-        floating && styles.floating,
+        pinned && styles.pinned,
+        props.sheetOpen && styles.sheet,
     ]
         .filter(Boolean)
         .join(" ");
 
-    const REQUIRED_MESSAGES: Record<number, string> = {
-        1: "Choose your country, add your postcode and answer the questions to continue.",
-        2: "Add the room’s size and answer every question to continue.",
-    };
+    // ---------- After an answer: bring the next question into view ----------
+    // If the next question is hidden below the bottom of the filter's scroll area, scroll it into view,
+    // but never so far that the question just answered leaves the top.
+    const bodyRef = useRef<HTMLDivElement>(null);
+
+    // A new step starts at its top: the steps share one scroll area, so reset it.
+    // On phones (first pass), the box is part of the page: if its top is above the screen, bring it back.
+    useEffect(() => {
+        bodyRef.current?.scrollTo({ top: 0 });
+        const top = box.current?.getBoundingClientRect().top ?? 0;
+        if (top < 0)
+            box.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [stepIndex]);
+    function revealNext(e: React.MouseEvent) {
+        const button = (e.target as HTMLElement).closest(
+            "button[aria-pressed]",
+        );
+        const body = bodyRef.current;
+        if (!button || !body || body.scrollHeight <= body.clientHeight) return;
+        requestAnimationFrame(() => {
+            const blocks = [
+                ...body.querySelectorAll<HTMLElement>(
+                    `[data-q], .${styles.question}, .${styles.field}`,
+                ),
+            ];
+            const current = blocks.find((b) => b.contains(button));
+            const next = current && blocks[blocks.indexOf(current) + 1];
+            if (!current || !next) return;
+            const box = body.getBoundingClientRect();
+            const pad = 16;
+            const below =
+                next.getBoundingClientRect().bottom + pad - box.bottom;
+            if (below <= 0) return; // already visible
+            const room = current.getBoundingClientRect().top - box.top - pad; // how far before the answered one leaves
+            const by = Math.min(below, Math.max(0, room));
+            if (by > 0) body.scrollBy({ top: by, behavior: "smooth" });
+        });
+    }
+
+    // The Next button's text: "Next: The room", or "See your 33 fires" on the last step
+    const nextLabel = (
+        <span className={styles.fnLabel}>
+            <span>
+                {stepIndex < totalSteps
+                    ? `Next: ${stepTitles[stepIndex]}`
+                    : props.showingFires
+                      ? `See your ${props.bestCount} fire${props.bestCount === 1 ? "" : "s"}`
+                      : "See your fires"}
+            </span>
+            <Icon name="arrowRight" size={14} />
+        </span>
+    );
+
+    /** The asterisk after a required question's label: black, orange once it's been skipped */
+    const ast = (key: string) => (
+        <span
+            className={
+                needs(key) ? `${styles.ast} ${styles.missAst}` : styles.ast
+            }
+            aria-hidden="true"
+        >
+            *
+        </span>
+    );
 
     // ---------- Text ----------
 
@@ -567,21 +432,68 @@ export default function SideBar(props: SideBarProps) {
             : `Pin on the centre of ${location.postcode} · drag it to your house`;
     }
 
-    return (
-        <>
-            {/* Phones: keeps the box's place in the page while it floats */}
-            <div ref={space} hidden={!floating} />
-
-            <aside ref={box} className={boxClass} data-filters>
-                {/* Phones: the box folded into one line. Tap to unfold */}
+    // ---------- Collapsed: the filter icon and the numbered steps ----------
+    // Clicking a step opens the filter on that step; clicking anywhere else opens it where it was
+    if (props.rail) {
+        return (
+            <aside
+                className={`${styles.box} ${styles.railBox}`}
+                data-filters
+                onClick={() => props.onOpenRail(stepIndex)}
+            >
                 <button
                     type="button"
-                    className={styles.mini}
-                    aria-expanded="false"
-                    onClick={onCollapseClick}
+                    className={styles.railOpen}
+                    aria-label="Open the filter"
                 >
-                    {miniContent}
+                    <Icon name="sliders" />
                 </button>
+                <ol className={styles.railSteps}>
+                    {stepTitles.map((title, i) => (
+                        <li key={i}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation(); // this step, not the last one
+                                    props.onOpenRail(i + 1);
+                                }}
+                            >
+                                <span className={styles.railNum}>{i + 1}</span>
+                                <span>{title}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ol>
+            </aside>
+        );
+    }
+
+    return (
+        <>
+            <aside ref={box} className={boxClass} data-filters>
+                {/* Phones, after the first pass: the pinned bar. Tap to open the filter as a sheet */}
+                {pinned && (
+                    <button
+                        type="button"
+                        className={styles.bar}
+                        onClick={props.onOpenSheet}
+                    >
+                        <Icon name="sliders" />
+                        <span className={styles.barText}>
+                            <span className={styles.barTitle}>
+                                Find my fireplace
+                            </span>
+                            {props.barNote && (
+                                <span className={styles.barNote}>
+                                    {props.barNote}
+                                </span>
+                            )}
+                        </span>
+                        <span className={styles.barChev} aria-hidden="true">
+                            <Icon name="chevronDown" size={18} />
+                        </span>
+                    </button>
+                )}
 
                 {/* ---------- Head: which step, and the arrows ---------- */}
                 <div className={styles.head}>
@@ -591,42 +503,17 @@ export default function SideBar(props: SideBarProps) {
                         </small>
                         <strong>{stepTitles[stepIndex - 1]}</strong>
                     </div>
-                    <button
-                        type="button"
-                        className={styles.ib}
-                        aria-label="Previous step"
-                        disabled={stepIndex === 1}
-                        onClick={() => setStepIndex((prev) => prev - 1)}
-                    >
-                        <Icon name="arrowLeft" />
-                    </button>
-                    <button
-                        type="button"
-                        className={`${styles.ib} ${styles.dark}`}
-                        aria-label="Next step"
-                        data-next
-                        disabled={
-                            stepIndex === props.questionCategories.length + 2
-                        }
-                        onClick={() => goTo(stepIndex + 1)}
-                    >
-                        <Icon name="arrowRight" />
-                    </button>
-                    {/* Phones only: fold the box into one line */}
-                    <button
-                        type="button"
-                        className={`${styles.ib} ${styles.ghost} ${styles.collapse}`}
-                        aria-label="Minimise filters"
-                        aria-expanded="true"
-                        onClick={onCollapseClick}
-                    >
-                        <span className={`${styles.chev} ${styles.open}`}>
-                            <PlusMinus
-                                className={styles.pm}
-                                verticalClassName={styles.pv}
-                            />
-                        </span>
-                    </button>
+                    {/* Phones: close the sheet (the chevron turns, and stays in place) */}
+                    {props.sheetOpen && (
+                        <button
+                            type="button"
+                            className={`${styles.ib} ${styles.sheetClose}`}
+                            aria-label="Close the filter"
+                            onClick={props.onCloseSheet}
+                        >
+                            <Icon name="chevronDown" />
+                        </button>
+                    )}
                 </div>
 
                 {/* ---------- Progress: one bar per step, click to jump ---------- */}
@@ -643,14 +530,29 @@ export default function SideBar(props: SideBarProps) {
                             key={i}
                             type="button"
                             className={
-                                i + 1 < stepIndex
-                                    ? styles.done
-                                    : i + 1 === stepIndex
-                                      ? styles.now
+                                i + 1 === stepIndex
+                                    ? styles.now
+                                    : i + 1 < stepIndex && stepDone(i + 1)
+                                      ? styles.done // passed and complete: black. Passed with gaps: stays grey
                                       : undefined
                             }
                             data-todo={
                                 props.todoSteps.includes(i + 1) || undefined
+                            }
+                            // Marked steps pulse one after the other (not on the first pass through the filter)
+                            data-soft={
+                                (!firstPass &&
+                                    flagged.includes(i + 1) &&
+                                    !stepDone(i + 1)) ||
+                                undefined
+                            }
+                            style={
+                                {
+                                    "--k": flagged
+                                        .filter((f) => !stepDone(f))
+                                        .sort((a, b) => a - b)
+                                        .indexOf(i + 1),
+                                } as React.CSSProperties
                             }
                             aria-label={`Step ${i + 1}: ${title}`}
                             aria-current={
@@ -668,11 +570,24 @@ export default function SideBar(props: SideBarProps) {
                 </div>
 
                 {/* ---------- Body: the open step ---------- */}
-                <div className={styles.body}>
+                <div ref={bodyRef} className={styles.body} onClick={revealNext}>
+                    {/* An optional step that was skipped: how many answers are missing */}
+                    {skippedHere.length > 0 && (
+                        <p className={styles.sl}>
+                            {skippedHere.length} missing answer
+                            {skippedHere.length === 1 ? "" : "s"} in this step
+                        </p>
+                    )}
+                    {/* A required question left empty: explained once, at the top */}
                     {nudgeMissing.length > 0 && (
-                        <p className={styles.required} role="alert">
-                            {REQUIRED_MESSAGES[stepIndex] ??
-                                "Answer every question to continue."}
+                        <p className={styles.reqMsg} role="alert">
+                            <span
+                                className={`${styles.ast} ${styles.missAst}`}
+                                aria-hidden="true"
+                            >
+                                *
+                            </span>{" "}
+                            Required
                         </p>
                     )}
 
@@ -687,7 +602,10 @@ export default function SideBar(props: SideBarProps) {
                                 }
                                 data-need={needs("country") || undefined}
                             >
-                                <span className={styles.label}>Country</span>
+                                <span className={styles.label}>
+                                    Country
+                                    {ast("country")}
+                                </span>
                                 {askedForCountry && country === null && (
                                     <p className={styles.warn} role="alert">
                                         Choose a country first.
@@ -717,10 +635,8 @@ export default function SideBar(props: SideBarProps) {
 
                             <label className={styles.field}>
                                 <span className={styles.label}>
-                                    Address{" "}
-                                    <span className={styles.optTag}>
-                                        (street and town)
-                                    </span>
+                                    Address
+                                    <Tip text={TIPS.address} label="Address" />
                                 </span>
                                 {/* Until the address is found, say so here, where it can be fixed */}
                                 {props.location && !props.location.precise && (
@@ -763,11 +679,15 @@ export default function SideBar(props: SideBarProps) {
                                 data-need={needs("postcode") || undefined}
                             >
                                 <span className={styles.label}>
-                                    Postcode{" "}
+                                    Postcode
+                                    {ast("postcode")}{" "}
                                     <span className={styles.optTag}>
-                                        (filled in from your address, or type
-                                        it)
+                                        fills in from your address
                                     </span>
+                                    <Tip
+                                        text={TIPS.postcode}
+                                        label="Postcode"
+                                    />
                                 </span>
                                 <input
                                     type="text"
@@ -777,7 +697,9 @@ export default function SideBar(props: SideBarProps) {
                                     onChange={handlePostcodeChange}
                                 />
                             </label>
-                            <p className={styles.hint}>{postcodeHint}</p>
+                            {props.location?.climateZone && (
+                                <p className={styles.hint}>{postcodeHint}</p>
+                            )}
 
                             {props.location && country && (
                                 <LocationMap
@@ -804,6 +726,11 @@ export default function SideBar(props: SideBarProps) {
                             >
                                 <span className={styles.label}>
                                     Property size
+                                    {ast("propertySize")}
+                                    <Tip
+                                        text={TIPS.propertySize}
+                                        label="Property size"
+                                    />
                                 </span>
                                 <div className={styles.options}>
                                     <button
@@ -849,6 +776,7 @@ export default function SideBar(props: SideBarProps) {
                             >
                                 <span className={styles.label}>
                                     Replacing an existing fireplace?
+                                    {ast("replacing")}
                                 </span>
                                 <div className={styles.options}>
                                     <button
@@ -890,6 +818,7 @@ export default function SideBar(props: SideBarProps) {
                                         <span className={styles.label}>
                                             What kind of fireplace are you
                                             replacing?
+                                            {ast("replacing")}
                                         </span>
                                         <div className={styles.options}>
                                             {(
@@ -922,39 +851,96 @@ export default function SideBar(props: SideBarProps) {
                     {/** Step 2: how much the fire is to heat, the room size, and the heat questions */}
                     {stepIndex === 2 && (
                         <div className={styles.stepBody}>
-                            <label className={styles.field}>
+                            {/* "What should heat your room?": two linked bars that always add up to 100% */}
+                            <div className={styles.question} data-q>
                                 <span className={styles.label}>
-                                    How much of the room should the fire heat?
+                                    What should heat your room?
+                                    {ast("share")}
+                                    <Tip
+                                        text={TIPS.share}
+                                        label="What should heat your room?"
+                                    />
                                 </span>
-                                <span className={styles.shareValue}>
-                                    {props.heatShare === 100
-                                        ? "All of it · the fire is the main heat source"
-                                        : props.heatShare === 0
-                                          ? "None · the fire is just for looks"
-                                          : `${props.heatShare} % · there’s other heating as well`}
-                                </span>
-                                <input
-                                    type="range"
-                                    className={styles.slider}
-                                    min={0}
-                                    max={100}
-                                    step={10}
-                                    value={props.heatShare}
-                                    aria-valuetext={`${props.heatShare} %`}
-                                    onChange={(e) =>
-                                        props.setHeatShare(
-                                            Number(e.target.value),
-                                        )
-                                    }
-                                />
-                                <span
-                                    className={styles.sliderEnds}
-                                    aria-hidden="true"
+                                <div className={styles.bars}>
+                                    {(
+                                        [
+                                            [
+                                                "fireplace",
+                                                "This fireplace",
+                                                props.heatShare,
+                                            ],
+                                            [
+                                                "other",
+                                                "Other heat sources",
+                                                100 - props.heatShare,
+                                            ],
+                                        ] as const
+                                    ).map(([key, label, value]) => (
+                                        <div
+                                            key={key}
+                                            className={styles.barRow}
+                                            data-bar={key}
+                                        >
+                                            <label
+                                                className={styles.barLabel}
+                                                htmlFor={`share-${key}`}
+                                            >
+                                                {label}
+                                            </label>
+                                            <span
+                                                className={styles.barTrack}
+                                                style={
+                                                    {
+                                                        "--w": value,
+                                                    } as React.CSSProperties
+                                                }
+                                            >
+                                                <span
+                                                    className={styles.barFill}
+                                                />
+                                                <input
+                                                    id={`share-${key}`}
+                                                    type="range"
+                                                    className={styles.barInput}
+                                                    min={0}
+                                                    max={100}
+                                                    step={10}
+                                                    value={value}
+                                                    aria-valuetext={`${value}%`}
+                                                    onChange={(e) =>
+                                                        // The other bar is the rest: dragging it to 30% gives the fireplace 70%
+                                                        props.setHeatShare(
+                                                            key === "fireplace"
+                                                                ? Number(
+                                                                      e.target
+                                                                          .value,
+                                                                  )
+                                                                : 100 -
+                                                                      Number(
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      ),
+                                                        )
+                                                    }
+                                                />
+                                                <span
+                                                    className={styles.barValue}
+                                                    aria-hidden="true"
+                                                >
+                                                    {value}%
+                                                </span>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p
+                                    className={`${styles.hint} ${styles.shareHelp}`}
+                                    aria-live="polite"
                                 >
-                                    <span>For looks</span>
-                                    <span>All the heat</span>
-                                </span>
-                            </label>
+                                    {shareHelp(props.heatShare)}
+                                </p>
+                            </div>
 
                             {/* Only when the fire is to heat the room */}
                             {props.heatShare > 0 && (
@@ -968,7 +954,12 @@ export default function SideBar(props: SideBarProps) {
                                         data-need={needs("room") || undefined}
                                     >
                                         <span className={styles.label}>
-                                            Room size (m²)
+                                            Area (m²)
+                                            {ast("room")}
+                                            <Tip
+                                                text={TIPS.area}
+                                                label="Area"
+                                            />
                                         </span>
                                         <input
                                             type="number"
@@ -983,17 +974,13 @@ export default function SideBar(props: SideBarProps) {
                                             }
                                         />
                                     </label>
-                                    <p className={styles.hint}>
-                                        Add hallways or rooms that stay open to
-                                        this space.
-                                    </p>
 
                                     <QuestionCategoryStep
                                         category={{
                                             documentId: "heat-demand",
                                             name: "",
                                             order: 0,
-                                            isPreferenceCategory: false,
+                                            isOptionalCategory: false,
                                             heatingQuestions:
                                                 props.heatDemandQuestions,
                                             propertyQuestions: [],
@@ -1012,6 +999,7 @@ export default function SideBar(props: SideBarProps) {
                                         onPropertyNumber={() => {}}
                                         removeAnswers={props.removeAnswers}
                                         missingIds={nudgeMissing}
+                                        required
                                     />
                                 </>
                             )}
@@ -1040,10 +1028,9 @@ export default function SideBar(props: SideBarProps) {
                                         [question.documentId]: {
                                             productProperty:
                                                 question.productField,
-                                            isPreference:
-                                                props.questionCategories[
-                                                    stepIndex - 3
-                                                ].isPreferenceCategory ?? false,
+                                            // Hard (removed) or soft (moved down), from the question itself
+                                            isHardFiltering:
+                                                !!question.isHardFiltering,
                                             // One entry per chosen option
                                             chosen: options.map((option) => ({
                                                 optionId: option.id,
@@ -1060,10 +1047,9 @@ export default function SideBar(props: SideBarProps) {
                                         [question.documentId]: {
                                             productProperty:
                                                 question.productField,
-                                            isPreference:
-                                                props.questionCategories[
-                                                    stepIndex - 3
-                                                ].isPreferenceCategory ?? false,
+                                            // Hard (removed) or soft (moved down), from the question itself
+                                            isHardFiltering:
+                                                !!question.isHardFiltering,
                                             // The typed number as the one chosen value, or nothing if the field is empty
                                             chosen:
                                                 value != null
@@ -1083,9 +1069,49 @@ export default function SideBar(props: SideBarProps) {
                                 }
                                 removeAnswers={props.removeAnswers}
                                 missingIds={nudgeMissing}
+                                required={
+                                    !props.questionCategories[stepIndex - 3]
+                                        .isOptionalCategory
+                                }
+                                skippedIds={skippedHere}
                             />
                         </div>
                     )}
+                </div>
+
+                {/* ---------- Back / Next: "Next: The room", and "See your N fires" on the last step ---------- */}
+                {/* Next fills black, left to right, once every question in the step is answered */}
+                <div className={styles.fnav}>
+                    {stepIndex > 1 && (
+                        <button
+                            type="button"
+                            className={styles.fnBack}
+                            aria-label="Back"
+                            onClick={() => setStepIndex((prev) => prev - 1)}
+                        >
+                            <Icon name="arrowLeft" size={14} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className={
+                            stepDone(stepIndex)
+                                ? `${styles.fnNext} ${styles.filled}`
+                                : styles.fnNext
+                        }
+                        data-next
+                        onClick={() =>
+                            stepIndex < totalSteps
+                                ? goTo(stepIndex + 1)
+                                : seeFires()
+                        }
+                    >
+                        {nextLabel}
+                        {/* A white copy, revealed from the left together with the black fill */}
+                        <span className={styles.fnWipe} aria-hidden="true">
+                            {nextLabel}
+                        </span>
+                    </button>
                 </div>
 
                 {/* ---------- Foot: how many fires, and start again ---------- */}
@@ -1093,13 +1119,12 @@ export default function SideBar(props: SideBarProps) {
                     <span>
                         {props.showingFires ? (
                             <>
-                                <b>{props.bestCount} recommendations</b>
-                                {props.moreCount > 0
-                                    ? ` · ${props.moreCount} you might also like`
-                                    : null}
+                                <b>{props.bestCount} best</b> ·{" "}
+                                {props.closeCount} close · {props.moreCount}{" "}
+                                more ideas
                             </>
                         ) : (
-                            `Your fires show at step ${props.firesAtStep}`
+                            "Steps 1 and 2 are required"
                         )}
                     </span>
                     <button
@@ -1110,24 +1135,6 @@ export default function SideBar(props: SideBarProps) {
                     </button>
                 </div>
             </aside>
-
-            {/* Phones: slides down from the top when scrolling back up. Tap to open the box */}
-            <div
-                ref={minibar}
-                className={styles.minibar}
-                aria-hidden="true"
-                data-filters
-            >
-                <button
-                    type="button"
-                    className={styles.mini}
-                    tabIndex={-1}
-                    aria-label="Show filters"
-                    onClick={undock}
-                >
-                    {miniContent}
-                </button>
-            </div>
         </>
     );
 }

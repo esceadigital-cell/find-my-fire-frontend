@@ -27,7 +27,7 @@ const CLOSE_KW = 1.1;
 
 export type Match = {
     product: Product;
-    misses: string[]; // the preferences it doesn't match, e.g. ["Gas"]
+    missCount: number; // how many soft-filtering answers it doesn't match (0 = matches all of them)
     kwShort: number; // how many kW below the heat need it is (0 when it's enough)
 };
 
@@ -35,7 +35,7 @@ export type FilterResult = {
     kwNeeded: number | null; // rounded up to one decimal: shown to the user and used for filtering
     best: Match[]; // every answer met, and enough heat
     close: Match[]; // every answer met, but up to 1.1 kW short of the heat need
-    more: Match[]; // a preference missed (enough heat, or up to 1.1 kW short)
+    more: Match[]; // a soft-filtering answer missed (enough heat, or up to 1.1 kW short)
 };
 
 export function filterFires(input: FilterInput): FilterResult {
@@ -100,8 +100,12 @@ export function filterFires(input: FilterInput): FilterResult {
             ), // e.g. "No preference" has no value
     );
 
-    const requirements = activeAnswers.filter((answer) => !answer.isPreference); // don't match: removed completely
-    const preferences = activeAnswers.filter((answer) => answer.isPreference); // don't match: moved down to "Might also like" list
+    const hardFilteringAnswers = activeAnswers.filter(
+        (answer) => answer.isHardFiltering,
+    ); // don't match: removed completely
+    const softFilteringAnswers = activeAnswers.filter(
+        (answer) => !answer.isHardFiltering,
+    ); // don't match: moved down to "You might love these too"
 
     const best: Match[] = [];
     const more: Match[] = [];
@@ -128,20 +132,20 @@ export function filterFires(input: FilterInput): FilterResult {
             if (ruleProfile && !meetsRule(product, ruleProfile)) continue;
         }
 
-        //requirements questions
-        let missesARequirement = false;
-        for (const answer of requirements) {
+        // Hard filtering: one miss removes the fire
+        let failsHardFilter = false;
+        for (const answer of hardFilteringAnswers) {
             if (!matches(product, answer)) {
-                missesARequirement = true;
-                break; // no need to check the rest
+                failsHardFilter = true;
+                break;
             }
         }
-        if (missesARequirement) continue;
+        if (failsHardFilter) continue;
 
-        //preferences questions
-        const misses = preferences
-            .filter((answer) => !matches(product, answer))
-            .map((answer) => answer.chosen.map((c) => c.label).join(" or ")); // e.g. "Gas or Electric"
+        // Soft filtering: how many it doesn't match (any miss moves it down)
+        const missCount = softFilteringAnswers.filter(
+            (answer) => !matches(product, answer),
+        ).length;
 
         // How far below the need the fire is (0 when it's enough)
         const kwShort = Math.max(
@@ -149,10 +153,10 @@ export function filterFires(input: FilterInput): FilterResult {
             Math.round((kwNeededRoundedUp - (product.maxOutputKw ?? 0)) * 10) /
                 10,
         );
-        const match = { product, misses, kwShort };
+        const match = { product, missCount, kwShort };
 
-        if (misses.length > 0)
-            more.push(match); // a preference missed: "You might love these too", short or not
+        if (missCount > 0)
+            more.push(match); // a soft-filtering answer missed: "You might love these too", short or not
         else if (kwShort > 0)
             close.push(match); // every answer met, but a little short on heat
         else best.push(match); // everything met
@@ -169,7 +173,7 @@ export function filterFires(input: FilterInput): FilterResult {
     // More: fewest misses first, then the ones with enough heat, then the smallest fire
     more.sort(
         (a, b) =>
-            a.misses.length - b.misses.length ||
+            a.missCount - b.missCount ||
             a.kwShort - b.kwShort ||
             (a.product.maxOutputKw ?? 0) - (b.product.maxOutputKw ?? 0),
     );

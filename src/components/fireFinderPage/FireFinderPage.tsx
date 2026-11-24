@@ -18,17 +18,11 @@ export default function FireFinderPage(props: FireFinderPageProps) {
                 {/* data-intro: Results measures this when the intro shrinks into the left column */}
                 <section className={styles.intro} data-intro>
                     <div>
-                        <p className={styles.kicker}>
-                            <span className={styles.dot} />
-                            Fire Finder
-                        </p>
-                        <h1 className={styles.title}>
-                            Find the fire that fits your home
-                        </h1>
+                        <h1 className={styles.title}>Find your Fireplace</h1>
                     </div>
                     <p className={styles.lede}>
-                        Answer a few questions. Every answer narrows the range,
-                        and the best fires for your home rise to the top.
+                        Answer a few questions and find the fireplaces best for
+                        your home.
                     </p>
                 </section>
 

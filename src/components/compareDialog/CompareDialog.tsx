@@ -103,13 +103,6 @@ export default function CompareDialog(props: CompareDialogProps) {
                       ? "Flue, firewood"
                       : "Power socket only",
         },
-        {
-            label: "Why it’s ranked here",
-            value: (m) =>
-                m.misses.length
-                    ? `You chose ${m.misses.join(" and ")}`
-                    : "Matches your answers",
-        },
     ];
 
     const tick = (ok: boolean) =>

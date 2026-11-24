@@ -4,6 +4,8 @@
     border-radius: 4px;
     overflow: hidden;
     background: #ffffff;
+    position: relative;
+    isolation: isolate;
 }
 
 // Same proportions as the mockup's map

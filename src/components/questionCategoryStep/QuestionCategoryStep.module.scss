@@ -92,3 +92,42 @@
 .need input {
     box-shadow: inset 0 0 0 1px $accent;
 }
+
+// ---------- Required and skipped questions ----------
+
+// The asterisk after a required question's label: black, orange once it's been skipped
+.ast {
+    margin-left: 2px;
+    color: $ink;
+    font-weight: 500;
+}
+
+.missAst {
+    color: $accent;
+}
+
+// A question skipped in an optional category: a thin orange line in the margin, so nothing moves
+.question,
+.field {
+    position: relative;
+}
+
+.miss::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    background: $accent;
+    animation: missFade 0.3s ease both;
+}
+
+@keyframes missFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

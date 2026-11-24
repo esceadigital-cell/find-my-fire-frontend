@@ -1,4 +1,5 @@
 import styles from "./QuestionCategoryStep.module.scss";
+import Tip from "../tip/Tip";
 import {
     HeatingAnswers,
     HeatingOption,
@@ -26,6 +27,10 @@ interface QuestionCategoryStepProps {
     removeAnswers: (questionIds: string[]) => void;
     /** Added: questions the user tried to skip in a required category (shown with an orange border) */
     missingIds?: string[];
+    /** every question here must be answered (a category that isn't optional, or step 2): shown with an asterisk */
+    required?: boolean;
+    /** questions skipped in an optional category, once the step is marked: a thin orange line beside them */
+    skippedIds?: string[];
 }
 
 // A question together with which kind it is, so both kinds can be listed together
@@ -103,6 +108,34 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
         else props.removeAnswers([question.documentId]); // nothing chosen: not answered
     }
 
+    /** The asterisk after a required question's label: black, orange once it's been skipped */
+    function asterisk(id: string) {
+        if (!props.required) return null;
+        const skipped = props.missingIds?.includes(id);
+        return (
+            <span
+                className={
+                    skipped ? `${styles.ast} ${styles.missAst}` : styles.ast
+                }
+                aria-hidden="true"
+            >
+                *
+            </span>
+        );
+    }
+
+    /** The class list for a question's container */
+    function questionClass(base: string, id: string, isFollowUp: boolean) {
+        return [
+            base,
+            isFollowUp && styles.followUp,
+            props.missingIds?.includes(id) && styles.need,
+            props.skippedIds?.includes(id) && styles.miss,
+        ]
+            .filter(Boolean)
+            .join(" ");
+    }
+
     // 3. One question: its buttons, and below them the follow-ups that the chosen answer opens
     function renderQuestion(item: Item, isFollowUp: boolean) {
         // Number question: an input field instead of buttons
@@ -116,14 +149,12 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
             return (
                 <label
                     key={question.documentId}
-                    className={[
+                    className={questionClass(
                         styles.field,
-                        isFollowUp && styles.followUp,
-                        props.missingIds?.includes(question.documentId) &&
-                            styles.need,
-                    ]
-                        .filter(Boolean)
-                        .join(" ")}
+                        question.documentId,
+                        isFollowUp,
+                    )}
+                    data-q
                     data-need={
                         props.missingIds?.includes(question.documentId) ||
                         undefined
@@ -131,11 +162,18 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
                 >
                     <span className={styles.label}>
                         {question.text}
+                        {asterisk(question.documentId)}
                         {question.unit && (
                             <span className={styles.optTag}>
                                 {" "}
                                 ({question.unit})
                             </span>
+                        )}
+                        {question.extraDescription && (
+                            <Tip
+                                text={question.extraDescription}
+                                label={question.text}
+                            />
                         )}
                     </span>
                     <input
@@ -180,14 +218,12 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
         return (
             <div
                 key={item.question.documentId}
-                className={[
+                className={questionClass(
                     styles.question,
-                    isFollowUp && styles.followUp,
-                    props.missingIds?.includes(item.question.documentId) &&
-                        styles.need,
-                ]
-                    .filter(Boolean)
-                    .join(" ")}
+                    item.question.documentId,
+                    isFollowUp,
+                )}
+                data-q
                 data-need={
                     props.missingIds?.includes(item.question.documentId) ||
                     undefined
@@ -195,8 +231,15 @@ export default function QuestionCategoryStep(props: QuestionCategoryStepProps) {
             >
                 <span className={styles.label}>
                     {item.question.text}
+                    {asterisk(item.question.documentId)}
                     {multiple && (
                         <span className={styles.optTag}> (choose any)</span>
+                    )}
+                    {item.question.extraDescription && (
+                        <Tip
+                            text={item.question.extraDescription}
+                            label={item.question.text}
+                        />
                     )}
                 </span>
 
