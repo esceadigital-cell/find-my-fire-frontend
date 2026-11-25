@@ -138,6 +138,8 @@ export default function FireFinder(props: FireFinderProps) {
 
     const [step, setStep] = useState(1);
     const [furthestStep, setFurthestStep] = useState(1);
+    // "See your fires" was pressed (it only goes through once every required step is answered)
+    const [seenFires, setSeenFires] = useState(false);
     const onStepChange = useCallback((s: number) => {
         setStep(s);
         setFurthestStep((prev) => Math.max(prev, s));
@@ -145,9 +147,7 @@ export default function FireFinder(props: FireFinderProps) {
 
     const firesAt = firesAtStep(questionCategories);
     const totalSteps = props.questionCategories.length + 2;
-    const showFires =
-        result.kwNeeded !== null &&
-        (furthestStep >= firesAt || furthestStep === totalSteps);
+    const showFires = result.kwNeeded !== null && (furthestStep >= firesAt || seenFires);
 
     // ---------- Phones ----------
     // First pass: the filter is a card under the heading, and the fires stay hidden.
@@ -247,16 +247,16 @@ export default function FireFinder(props: FireFinderProps) {
     const left =
         remindCount > 0
             ? stepsWithUnanswered({
-                  location: locationData,
-                  m2ToHeat,
-                  propertyOver2Hectares,
-                  replacingExistingWoodBurner,
-                  heatingAnswers,
-                  propertyAnswers,
-                  questionCategories: questionCategories,
-                  heatShare,
-                  heatDemandQuestions: props.heatDemandQuestions,
-              })
+                location: locationData,
+                m2ToHeat,
+                propertyOver2Hectares,
+                replacingExistingWoodBurner,
+                heatingAnswers,
+                propertyAnswers,
+                questionCategories: questionCategories,
+                heatShare,
+                heatDemandQuestions: props.heatDemandQuestions,
+            })
             : [];
     const barNote = left.length
         ? `Answer ${stepList(left)} for better recommendations`
@@ -440,6 +440,7 @@ export default function FireFinder(props: FireFinderProps) {
                 rail={rail}
                 onOpenRail={openRail}
                 onSeeFires={() => {
+                    setSeenFires(true);
                     if (phone) {
                         // Phones: the first pass is over. The filter becomes the pinned bar, and the fires appear
                         setPhoneDone(true);

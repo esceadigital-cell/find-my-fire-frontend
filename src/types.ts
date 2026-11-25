@@ -65,6 +65,8 @@ export type PropertyAnswer = {
     isHardFiltering: boolean; // true: a fire that doesn't match is removed. False: it moves down
     /** One entry per chosen option: several with allowMultipleAnswers, otherwise one (empty: not answered) */
     chosen: ChosenOption[];
+    onlyForField: string | null; // only fires with this field…
+    onlyForValue: string | null; // …set to one of these values are checked; others pass
 };
 
 export type PropertyAnswers = Record<string, PropertyAnswer>;
@@ -183,6 +185,8 @@ export type PropertyQuestion = {
     allowMultipleAnswers: boolean | null; // several options can be chosen
     isHardFiltering: boolean | null; // on: fires that don't match are removed. Off: they move to "You might love these too"
     extraDescription: string | null; // shown next to the question's label
+    onlyForField: string | null; // the question only applies to fires where this field…
+    onlyForValue: string | null; // …has this value (several separated by commas, e.g. "insert,inbuilt")
 };
 
 // ---------- Categories: one step each ----------

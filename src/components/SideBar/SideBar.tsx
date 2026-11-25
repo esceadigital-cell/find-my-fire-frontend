@@ -392,8 +392,8 @@ export default function SideBar(props: SideBarProps) {
                 {stepIndex < totalSteps
                     ? `Next: ${stepTitles[stepIndex]}`
                     : props.showingFires
-                      ? `See your ${props.bestCount} fire${props.bestCount === 1 ? "" : "s"}`
-                      : "See your fires"}
+                        ? `See your ${props.bestCount} fire${props.bestCount === 1 ? "" : "s"}`
+                        : "See your fires"}
             </span>
             <Icon name="arrowRight" size={14} />
         </span>
@@ -533,8 +533,8 @@ export default function SideBar(props: SideBarProps) {
                                 i + 1 === stepIndex
                                     ? styles.now
                                     : i + 1 < stepIndex && stepDone(i + 1)
-                                      ? styles.done // passed and complete: black. Passed with gaps: stays grey
-                                      : undefined
+                                        ? styles.done // passed and complete: black. Passed with gaps: stays grey
+                                        : undefined
                             }
                             data-todo={
                                 props.todoSteps.includes(i + 1) || undefined
@@ -764,7 +764,7 @@ export default function SideBar(props: SideBarProps) {
                             <div
                                 className={
                                     needs("replacing") &&
-                                    replacingFireplace !== true
+                                        replacingFireplace !== true
                                         ? `${styles.question} ${styles.need}`
                                         : styles.question
                                 }
@@ -912,15 +912,15 @@ export default function SideBar(props: SideBarProps) {
                                                         props.setHeatShare(
                                                             key === "fireplace"
                                                                 ? Number(
-                                                                      e.target
-                                                                          .value,
-                                                                  )
+                                                                    e.target
+                                                                        .value,
+                                                                )
                                                                 : 100 -
-                                                                      Number(
-                                                                          e
-                                                                              .target
-                                                                              .value,
-                                                                      ),
+                                                                Number(
+                                                                    e
+                                                                        .target
+                                                                        .value,
+                                                                ),
                                                         )
                                                     }
                                                 />
@@ -995,8 +995,8 @@ export default function SideBar(props: SideBarProps) {
                                                 },
                                             })
                                         }
-                                        onPropertyAnswer={() => {}} // step 2 only has heating questions
-                                        onPropertyNumber={() => {}}
+                                        onPropertyAnswer={() => { }} // step 2 only has heating questions
+                                        onPropertyNumber={() => { }}
                                         removeAnswers={props.removeAnswers}
                                         missingIds={nudgeMissing}
                                         required
@@ -1031,6 +1031,9 @@ export default function SideBar(props: SideBarProps) {
                                             // Hard (removed) or soft (moved down), from the question itself
                                             isHardFiltering:
                                                 !!question.isHardFiltering,
+                                            // Which fires the question applies to (empty: all of them)
+                                            onlyForField: question.onlyForField ?? null,
+                                            onlyForValue: question.onlyForValue ?? null,
                                             // One entry per chosen option
                                             chosen: options.map((option) => ({
                                                 optionId: option.id,
@@ -1050,19 +1053,22 @@ export default function SideBar(props: SideBarProps) {
                                             // Hard (removed) or soft (moved down), from the question itself
                                             isHardFiltering:
                                                 !!question.isHardFiltering,
+                                            // Which fires the question applies to (empty: all of them)
+                                            onlyForField: question.onlyForField ?? null,
+                                            onlyForValue: question.onlyForValue ?? null,
                                             // The typed number as the one chosen value, or nothing if the field is empty
                                             chosen:
                                                 value != null
                                                     ? [
-                                                          {
-                                                              optionId: null, // no button was chosen
-                                                              compareMethod:
-                                                                  question.operator, // the operator is on the question, not an option
-                                                              filterValue:
-                                                                  value,
-                                                              label: `${value}${question.unit ? " " + question.unit : ""}`,
-                                                          },
-                                                      ]
+                                                        {
+                                                            optionId: null, // no button was chosen
+                                                            compareMethod:
+                                                                question.operator, // the operator is on the question, not an option
+                                                            filterValue:
+                                                                value,
+                                                            label: `${value}${question.unit ? " " + question.unit : ""}`,
+                                                        },
+                                                    ]
                                                     : [],
                                         },
                                     })

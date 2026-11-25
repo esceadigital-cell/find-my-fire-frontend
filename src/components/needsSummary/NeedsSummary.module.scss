@@ -26,15 +26,13 @@
 
 .strip {
     display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr) minmax(
-            0,
-            0.95fr
-        ) minmax(0, 0.7fr) minmax(0, 1.85fr);
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr) minmax(0,
+            0.95fr) minmax(0, 0.7fr) minmax(0, 1.85fr);
     border: 1px solid $line;
     border-radius: $radius;
     overflow: hidden;
 
-    > div {
+    >div {
         padding: 12px 16px;
         display: flex;
         flex-direction: column;
@@ -45,14 +43,13 @@
 
     // Tablet: no room for the climate
     @include tablet-down {
-        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.8fr) minmax(
-                0,
-                0.7fr
-            ) minmax(0, 1.9fr);
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.8fr) minmax(0,
+                0.7fr) minmax(0, 1.9fr);
 
-        > div {
+        >div {
             padding: 10px 12px;
         }
+
         .climate {
             display: none;
         }
@@ -60,10 +57,8 @@
 
     // Phones: no room for the region either
     @include phone {
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(
-                0,
-                1.6fr
-            );
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0,
+                1.6fr);
 
         .region {
             display: none;
@@ -72,7 +67,7 @@
 }
 
 // The dark cell with the heat needed
-.strip > .heat {
+.strip>.heat {
     background: $ink;
     color: $bg;
     border-left: 0;
@@ -107,6 +102,7 @@
     @include tablet-down {
         font-size: 22px;
     }
+
     @include phone {
         font-size: 20px;
     }
@@ -185,6 +181,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -214,7 +211,7 @@
         overflow: hidden;
     }
 
-    .strip > div {
+    .strip>div {
         transition: padding 0.6s $ease;
     }
 
@@ -286,7 +283,6 @@
         gap: 0;
         padding: 0 0 10px;
         box-shadow: 0 1px 0 $line;
-        cursor: pointer;
 
         &:not(:has(.rule)) {
             padding-bottom: 36px;
@@ -298,7 +294,7 @@
             opacity: 0;
         }
 
-        .strip > div {
+        .strip>div {
             padding: 7px 12px;
         }
 
@@ -330,7 +326,7 @@
             font-size: 13px;
             margin-top: 8px;
 
-            > span {
+            >span {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -351,11 +347,6 @@
 // ---------- Four cells: Heat needed · Space · Climate · Region ----------
 .strip {
     grid-template-columns: 1.25fr 0.75fr 0.95fr 0.95fr;
-}
-
-// Compact: the whole strip is a button to show it in full
-.compact {
-    cursor: pointer;
 }
 
 // "SHOWING 8 best matches · 12 close on heat · 4 worth a look"
@@ -379,7 +370,7 @@
 .showingValue {
     min-width: 0;
 
-    > span {
+    >span {
         white-space: nowrap;
     }
 }

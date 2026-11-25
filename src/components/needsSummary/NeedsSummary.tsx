@@ -11,7 +11,6 @@ interface NeedsSummaryProps {
     showing: boolean;
     /** smaller version, so the results get more room (tablet and desktop) */
     compact: boolean;
-    onToggleCompact: () => void;
     onOpenRule: () => void;
 }
 
@@ -40,8 +39,6 @@ export default function NeedsSummary(props: NeedsSummaryProps) {
                     ? `${styles.needs} ${styles.compact}`
                     : styles.needs
             }
-            // Compact: clicking it shows it in full again
-            onClick={props.compact ? props.onToggleCompact : undefined}
         >
             <div className={styles.head}>
                 <h2 className={styles.eyebrow}>What your home needs</h2>

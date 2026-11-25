@@ -36,7 +36,7 @@ function sortMatches(list: Match[], sort: Sort) {
         (a, b) =>
             (sort.fuel
                 ? Number(b.product.fuelType === sort.fuel) -
-                  Number(a.product.fuelType === sort.fuel)
+                Number(a.product.fuelType === sort.fuel)
                 : 0) ||
             (sort.kw
                 ? sort.kw === "asc"
@@ -53,7 +53,10 @@ function sortMatches(list: Match[], sort: Sort) {
  */
 export default function ResultGrid(props: ResultGridProps) {
     const [per, setPer] = useState(3);
-    const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
+    // Close on heat: highest first, so the one closest to the need comes first
+    const [sort, setSort] = useState<Sort>(
+        props.kind === "close" ? { ...DEFAULT_SORT, kw: "desc" } : DEFAULT_SORT,
+    );
     const [rows, setRows] = useState(props.kind === "top" ? 2 : 1);
 
     useEffect(() => {

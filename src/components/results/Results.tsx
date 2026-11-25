@@ -231,7 +231,9 @@ export default function Results(props: ResultsProps) {
                 <p>
                     {props.result.kwNeeded === null
                         ? "Add your location and the room’s size (steps 1 and 2). Then we can work out the heat you need."
-                        : `Answer the questions on the left. Your fires appear at step ${props.firesAt.step}, ${props.firesAt.title}.`}
+                        : props.firesAt.title
+                            ? `Answer the questions on the left. Your fires appear at step ${props.firesAt.step}, ${props.firesAt.title}.`
+                            : "Answer every step on the left, then press “See your fires”."}
                 </p>
             </div>
         );
@@ -310,7 +312,6 @@ export default function Results(props: ResultsProps) {
                     m2ToHeat={props.m2ToHeat}
                     showing={ready && !loading}
                     compact={needsCompact}
-                    onToggleCompact={() => setNeedsCompact(!needsCompact)}
                     onOpenRule={() => setRuleOpen(true)}
                 />
 

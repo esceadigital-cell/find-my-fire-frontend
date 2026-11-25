@@ -151,7 +151,7 @@ export function filterFires(input: FilterInput): FilterResult {
         const kwShort = Math.max(
             0,
             Math.round((kwNeededRoundedUp - (product.maxOutputKw ?? 0)) * 10) /
-                10,
+            10,
         );
         const match = { product, missCount, kwShort };
 
@@ -192,12 +192,31 @@ const RELATION_FIELDS: Record<string, string> = {
     brands: "brandName",
 };
 
+/**
+ * Does an answer apply to this fire? Only if the fire meets the question's condition, e.g. "installType is insert".
+ * No condition: it applies to every fire. Several values can be given, separated by commas.
+ */
+function appliesTo(product: Product, answer: PropertyAnswer) {
+    if (!answer.onlyForField || !answer.onlyForValue) return true;
+
+    const values = answer.onlyForValue.split(",").map((v) => v.trim().toLowerCase());
+    const productValue = (product as Record<string, unknown>)[answer.onlyForField];
+
+    // A relation, e.g. bases: does the fire have one of them?
+    if (Array.isArray(productValue)) {
+        const field = RELATION_FIELDS[answer.onlyForField];
+        return productValue.some((item) => values.includes(String(item[field]).toLowerCase()));
+    }
+    return values.includes(String(productValue).toLowerCase());
+}
+
 /** Does a product match an answer? With several chosen options, matching any one of them is enough. */
 function matches(product: Product, answer: PropertyAnswer) {
+    // The question doesn't apply to this fire (e.g. the wall width, for a freestanding fire): it passes
+    if (!appliesTo(product, answer)) return true;
+
     const property = answer.productProperty ?? "";
-    return answer.chosen.some((c) =>
-        matchesOption(product, property, c.compareMethod, c.filterValue),
-    );
+    return answer.chosen.some((c) => matchesOption(product, property, c.compareMethod, c.filterValue));
 }
 
 /** Does a product match one chosen option? */

@@ -50,8 +50,8 @@ function chosenKeys(
         kind === "heating"
             ? [p.heatingAnswers[question.documentId]?.optionId]
             : (p.propertyAnswers[question.documentId]?.chosen ?? []).map(
-                  (c) => c.optionId,
-              );
+                (c) => c.optionId,
+            );
     return question.options.filter((o) => ids.includes(o.id)).map((o) => o.key);
 }
 
@@ -125,10 +125,10 @@ export function isRequiredStep(step: number, p: Progress) {
     return !p.questionCategories[step - 3]?.isOptionalCategory;
 }
 
-/** The step where the fires start showing: the first optional category, or the last step if there are none */
+/** The step where the fires start showing: the first optional category, or after the last step if there are none */
 export function firesAtStep(categories: QuestionCategory[]) {
     const first = categories.findIndex((c) => c.isOptionalCategory);
-    return first >= 0 ? first + 3 : categories.length + 2; // no optional category: the last step
+    return first >= 0 ? first + 3 : categories.length + 3; // no optional category: after the last step ("See your fires")
 }
 
 /** All steps (numbered from 1) that still have unanswered questions, for the hint */
