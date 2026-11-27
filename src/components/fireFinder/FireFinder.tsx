@@ -8,6 +8,7 @@ import {
     LocationData,
     Product,
     PropertyAnswers,
+    PropertyQuestion,
     QuestionCategory,
 } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -99,24 +100,55 @@ export default function FireFinder(props: FireFinderProps) {
         ],
     );
 
-    // The categories without the step 2 questions (those are asked in step 2, not in a category).
+    // The categories without the step 2 questions (those are asked in step 2, not in a category),
+    // and without property questions that don't apply in the chosen country.
     // A category left with no questions is left out, so there's no empty step.
-    const questionCategories = useMemo(
-        () =>
-            props.questionCategories
-                .map((c) => ({
-                    ...c,
-                    heatingQuestions: c.heatingQuestions.filter(
-                        (q) => q.isDependingOnHeatDemand !== true,
-                    ),
-                }))
-                .filter(
-                    (c) =>
-                        c.heatingQuestions.length + c.propertyQuestions.length >
-                        0,
+    const country = locationData?.country ?? null;
+
+    const questionCategories = useMemo(() => {
+        // Does a question apply in the chosen country? No markets: everywhere
+        const inCountry = (q: PropertyQuestion) =>
+            !q.markets?.length ||
+            !country ||
+            q.markets.some((m) => m.code === country);
+
+        return props.questionCategories
+            .map((c) => ({
+                ...c,
+                heatingQuestions: c.heatingQuestions.filter(
+                    (q) => q.isDependingOnHeatDemand !== true,
                 ),
-        [props.questionCategories],
-    );
+                propertyQuestions: c.propertyQuestions
+                    .filter(inCountry)
+                    .map((q) => ({
+                        ...q,
+                        followUps: q.followUps?.filter(inCountry).map((f) => ({
+                            ...f,
+                            followUps: f.followUps?.filter(inCountry),
+                        })),
+                    })),
+            }))
+            .filter(
+                (c) =>
+                    c.heatingQuestions.length + c.propertyQuestions.length > 0,
+            );
+    }, [props.questionCategories, country]);
+
+    // A new country: answers to questions that don't apply there any more are removed
+    useEffect(() => {
+        const ids = (q: PropertyQuestion): string[] => [
+            q.documentId,
+            ...(q.followUps ?? []).flatMap(ids),
+        ];
+        const visible = new Set(
+            questionCategories.flatMap((c) => c.propertyQuestions.flatMap(ids)),
+        );
+        const hidden = Object.keys(propertyAnswers).filter(
+            (id) => !visible.has(id),
+        );
+        if (hidden.length) removeAnswers(hidden);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [country]);
 
     // Focus rings only show when the keyboard is used, not on every click
     useEffect(() => {
@@ -146,8 +178,8 @@ export default function FireFinder(props: FireFinderProps) {
     }, []);
 
     const firesAt = firesAtStep(questionCategories);
-    const totalSteps = props.questionCategories.length + 2;
-    const showFires = result.kwNeeded !== null && (furthestStep >= firesAt || seenFires);
+    const showFires =
+        result.kwNeeded !== null && (furthestStep >= firesAt || seenFires);
 
     // ---------- Phones ----------
     // First pass: the filter is a card under the heading, and the fires stay hidden.
@@ -247,16 +279,16 @@ export default function FireFinder(props: FireFinderProps) {
     const left =
         remindCount > 0
             ? stepsWithUnanswered({
-                location: locationData,
-                m2ToHeat,
-                propertyOver2Hectares,
-                replacingExistingWoodBurner,
-                heatingAnswers,
-                propertyAnswers,
-                questionCategories: questionCategories,
-                heatShare,
-                heatDemandQuestions: props.heatDemandQuestions,
-            })
+                  location: locationData,
+                  m2ToHeat,
+                  propertyOver2Hectares,
+                  replacingExistingWoodBurner,
+                  heatingAnswers,
+                  propertyAnswers,
+                  questionCategories: questionCategories,
+                  heatShare,
+                  heatDemandQuestions: props.heatDemandQuestions,
+              })
             : [];
     const barNote = left.length
         ? `Answer ${stepList(left)} for better recommendations`

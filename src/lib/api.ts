@@ -90,7 +90,11 @@ export async function getQuestionCategories() {
             `&populate[propertyQuestions][sort][0]=order:asc` +
             `&populate[propertyQuestions][populate][options]=true` +
             `&populate[propertyQuestions][populate][followUps][populate][options]=true` +
-            `&populate[propertyQuestions][populate][followUps][populate][followUps][populate][options]=true`,
+            `&populate[propertyQuestions][populate][followUps][populate][followUps][populate][options]=true` +
+            // Which countries each property question applies to (empty: all), at every level
+            `&populate[propertyQuestions][populate][markets][fields][0]=code` +
+            `&populate[propertyQuestions][populate][followUps][populate][markets][fields][0]=code` +
+            `&populate[propertyQuestions][populate][followUps][populate][followUps][populate][markets][fields][0]=code`,
     );
 }
 

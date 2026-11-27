@@ -187,6 +187,7 @@ export type PropertyQuestion = {
     extraDescription: string | null; // shown next to the question's label
     onlyForField: string | null; // the question only applies to fires where this field…
     onlyForValue: string | null; // …has this value (several separated by commas, e.g. "insert,inbuilt")
+    markets?: { code: "NZ" | "AU" }[]; // only shown in these countries (empty: everywhere)
 };
 
 // ---------- Categories: one step each ----------
